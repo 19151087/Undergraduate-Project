@@ -13,9 +13,9 @@ typedef struct dataSensor_st {
     float humidity;
 
     // data from PMS7003 sensor
-    uint32_t pm1_0;
-    uint32_t pm2_5;
-    uint32_t pm10;
+    uint16_t pm1_0;
+    uint16_t pm2_5;
+    uint16_t pm10;
 } dataSensor_st;
 
 #endif

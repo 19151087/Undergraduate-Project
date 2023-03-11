@@ -7,10 +7,11 @@
 #include "esp_err.h"
 #include "driver/uart.h"
 #include "driver/gpio.h"
+#include "string.h"
 
 #define START_CHARACTER_1   0x42
 #define START_CHARACTER_2   0x4d
-#define RX_BUFFER_SIZE      32
+#define PMS7003_DRIVER_BUF_SIZE 1024
 
 #define PMS7003_COMMAND_SIZE    7
 
@@ -24,8 +25,6 @@
 #define ESP_ERROR_PMS7003_SET_SLEEP_MODE_FAILED     ((ID_PMS7003 << 12)|(0x05))
 #define ESP_ERROR_PMS7003_WAKEUP_FAILED             ((ID_PMS7003 << 12)|(0x06))
 
-#define PMS_ERROR_INVALID_VALUE                     UINT16_MAX
-
 #define UART_CONFIG_DEFAULT()   {   .baud_rate = CONFIG_UART_BAUD_RATE,     \
                                     .data_bits = UART_DATA_8_BITS,          \
                                     .parity = UART_PARITY_DISABLE,          \
@@ -34,21 +33,13 @@
                                     .source_clk = UART_SCLK_APB,            \
 }
 
-static const char PMS7003_COMMAND_WAKEUP[] =        { 0x42, 0x4D, 0xE4, 0x00, 0x01, 0x01, 0x74 };
-static const char PMS7003_COMMAND_SLEEP[] =         { 0x42, 0x4D, 0xE4, 0x00, 0x00, 0x01, 0x73 };
-static const char PMS7003_COMMAND_SET_PASSIVE[] =   { 0x42, 0x4D, 0xE1, 0x00, 0x00, 0x01, 0x70 };
-static const char PMS7003_COMMAND_SET_ACTIVE[] =    { 0x42, 0x4D, 0xE1, 0x00, 0x01, 0x01, 0x71 };
+static const char PMS7003_COMMAND_WAKEUP[]       =  { 0x42, 0x4D, 0xE4, 0x00, 0x01, 0x01, 0x74 };
+static const char PMS7003_COMMAND_SLEEP[]        =  { 0x42, 0x4D, 0xE4, 0x00, 0x00, 0x01, 0x73 };
+static const char PMS7003_COMMAND_SET_PASSIVE[]  =  { 0x42, 0x4D, 0xE1, 0x00, 0x00, 0x01, 0x70 };
+static const char PMS7003_COMMAND_SET_ACTIVE[]   =  { 0x42, 0x4D, 0xE1, 0x00, 0x01, 0x01, 0x71 };
 static const char PMS7003_COMMAND_REQUEST_READ[] =  { 0x42, 0x4D, 0xE2, 0x00, 0x00, 0x01, 0x71 };
 
-enum { indoor, outdoor};
-
-enum PMS_STATUS { PMS_STATUS_OK, PMS_STATUS_READING};
-
 enum PMS_MODE { PMS_MODE_PASSIVE, PMS_MODE_ACTIVE};
-
-//static enum PMS_STATUS pms_status = PMS_STATUS_READING;
-static enum PMS_MODE pms_mode = PMS_MODE_ACTIVE;
-static enum PMS_STATUS pms_status = PMS_STATUS_OK;
 
 /**
  * @brief 
@@ -91,7 +82,7 @@ esp_err_t pms7003_sleepMode(void);
  * 
  * @return esp_err_t 
  */
-esp_err_t pms7003_wakeup(void);
+esp_err_t pms7003_wakeUpMode(void);
 
 /**
  * @brief 
@@ -103,13 +94,12 @@ esp_err_t pms7003_requestReadData(void);
 /**
  * @brief 
  * 
- * @param pms_modeAmbience 
  * @param pm1_0 
  * @param pm2_5 
  * @param pm10 
- * @return esp_err_t 
+ * @return bool
  */
-esp_err_t pms7003_readData(const int pms_modeAmbience, uint16_t *pm1_0, uint16_t *pm2_5, uint16_t *pm10);
+bool pms7003_readData(uint16_t *pm1_0, uint16_t *pm2_5, uint16_t *pm10);
 
 
 #endif
