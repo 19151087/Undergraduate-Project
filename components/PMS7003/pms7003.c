@@ -107,7 +107,7 @@ esp_err_t pms7003_wakeUpMode(void)
 bool pms7003_readData(uint16_t* pm1_0, uint16_t* pm2_5, uint16_t* pm10) {
     uint8_t data[32];
     uint8_t checksum = 0, sum = 0;
-    bool valid;
+    bool valid = false;
 
     // read data
     uint8_t datalength = uart_read_bytes(CONFIG_PMS_UART_PORT, data, 32, 100 / portTICK_PERIOD_MS);
@@ -128,15 +128,14 @@ bool pms7003_readData(uint16_t* pm1_0, uint16_t* pm2_5, uint16_t* pm10) {
             *pm1_0 = (data[10] << 8) | data[11];
             *pm2_5 = (data[12] << 8) | data[13];
             *pm10 = (data[14] << 8) | data[15];
-        
-            valid = true;
             ESP_LOGI(__func__, "Read data successfully.\n");
+
+            valid = true;
         } 
         else {
             *pm1_0 = -1;
             *pm2_5 = -1;
             *pm10 = -1;
-
             ESP_LOGE(__func__, "Data invalid.\n");
         }
     }

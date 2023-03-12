@@ -21,8 +21,7 @@ menu "PMS7003 configuration"
     config PMS_UART_PORT
         int "Uart Port"
         default 2
-        help 
+        help
             UART port for PMS sensor.
-
 
 endmenu

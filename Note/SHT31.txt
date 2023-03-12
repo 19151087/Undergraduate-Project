@@ -1,0 +1,12 @@
+cấu trúc data
+
+- 7 bit địa chỉ
+- 16 bit cho command 
+
+- sau chuỗi dữ liệu sẽ có 8 bit checksum
+- 16 bit dữ liệu nhiệt độ: ... + [44..51] + ACK + [53..60] + ACK + [CRC] + ACK +.... 
+- 16 bit dữ liệu độ ẩm: ... + [71..78] + ACK + [80..87] + ACK + [CRC] + ACK +.... 
+
+
+có vài lệnh để điều khiển chế độ cho cảm biến
+
