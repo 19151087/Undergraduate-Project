@@ -1,27 +1,8 @@
 
-// doc data tu cam bien sau do luu vao struct datamanager
+#include "main.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "driver/gpio.h"
-#include "driver/uart.h"
-#include "driver/i2c.h"
-#include "driver/spi_common.h"
-
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/semphr.h"
-#include "freertos/timers.h"
-#include "freertos/queue.h"
-#include "freertos/ringbuf.h"
-#include "freertos/event_groups.h"
-
-#include "button.h"
-#include "pms7003.h"
-#include "sht3x.h"
-#include "datamanager.h"
+/* @brief tag used for ESP serial console messages */
+static const char TAG[] = "main";
 
 #define PMS7003_PERIOD_MS 30000
 
@@ -163,8 +144,28 @@ void init_sensors()
     vTaskDelay(500 / portTICK_PERIOD_MS);
 }
 
+
+/* wifi callback */
+void cb_connection_ok(void *pvParameter)
+{
+    ip_event_got_ip_t* param = (ip_event_got_ip_t*)pvParameter;
+
+	/* transform IP to human readable string */
+	char str_ip[16];
+	esp_ip4addr_ntoa(&param->ip_info.ip, str_ip, IP4ADDR_STRLEN_MAX);
+
+	ESP_LOGI(TAG, "I have a connection and my IP is %s!", str_ip);
+}
+
+
 void app_main(void)
 {
+    /* start wifi manager*/
+    wifi_manager_start();
+
+    /* register a callback when connection is success*/
+    wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &cb_connection_ok);
+
     init_sensors();
     // Create task to get data from sensor
     xTaskCreate(getDataFromSensor_task, // Task function
