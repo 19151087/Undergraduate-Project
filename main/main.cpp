@@ -1,10 +1,10 @@
 #include "main.h"
 
+__attribute__((unused)) static const char TAG[] = "main";
 using namespace ESPFirebase;
 
-/* @brief tag used for ESP serial console messages */
-static const char TAG[] = "main";
 #define PMS7003_PERIOD_MS 30000
+
 
 TaskHandle_t getDataFromSensorTask_handle = NULL;
 
@@ -13,6 +13,8 @@ TimerHandle_t pms7003_timer = NULL;
 
 // Mutex for protecting currentData
 SemaphoreHandle_t currentDataMutex = NULL;
+
+QueueHandle_t dataSensorSentToMQTT_queue;
 
 uart_config_t pms_uart_config = UART_CONFIG_DEFAULT();
 
@@ -26,7 +28,6 @@ static sht3x_t dev;
 user_account_t account = {USER_EMAIL, USER_PASSWORD};
 FirebaseApp app = FirebaseApp(API_KEY);
 RTDB db = RTDB(&app, DATABASE_URL);
-
 
 // pms_wake_status of PMS7003 sensor (TRUE = Wake up, FALSE = Sleep)
 bool pms_wake_status = false;
@@ -63,6 +64,7 @@ void pms7003_timer_callback(TimerHandle_t xTimer)
         pms_wake_status = true;
     }
 }
+
 static void getDataFromSensor_task(void *pvParameters)
 {
     float temperatureTemp, humidityTemp;
@@ -138,7 +140,6 @@ static void getDataFromSensor_task(void *pvParameters)
 
 void init_sensors()
 {
-    //(&dataSensor, 0, sizeof(struct dataSensor_st));
     //Initialize SHT31 sensor
     ESP_ERROR_CHECK(i2cdev_init());
     memset(&dev, 0, sizeof(sht3x_t));
@@ -155,38 +156,36 @@ void init_sensors()
     ESP_ERROR_CHECK(pms7003_initUart(&pms_uart_config));
 
     vTaskDelay(500 / portTICK_PERIOD_MS);
-}
 
-/****************************WIFI-CONNECTION******************************/
-
-/* wifi callback */
-void cb_connection_ok(void *pvParameter)
-{
-    ip_event_got_ip_t* param = (ip_event_got_ip_t*)pvParameter;
-
-	/* transform IP to human readable string */
-	char str_ip[16];
-	esp_ip4addr_ntoa(&param->ip_info.ip, str_ip, IP4ADDR_STRLEN_MAX);
-
-	ESP_LOGI(TAG, "I have a connection and my IP is %s!", str_ip);
-}
-
-extern "C" void app_main(void)
-{
-    // /* start wifi manager*/
-    // wifi_manager_start();
-    // /* register a callback when connection is success*/
-    // wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &cb_connection_ok);
-    wifiInit(SSID, PASSWORD);  // blocking until it connects
-
-    //wifi_manager_disconnect_async();
-    init_sensors();
     // Create task to get data from sensor
     xTaskCreate(getDataFromSensor_task, // Task function
                 "getDataFromSensor_task", // Task name
                 (1024 * 64), // Stack size
                 NULL, // Parameter
-                5, // Priority
+                24, // Priority
                 &getDataFromSensorTask_handle); // Task handle
+}
 
+/*----------------------------------*WIFI-CONNECTION*--------------------------------*/
+
+/* wifi callback */
+void wifi_connect_ok_callback(void *pvParameter)
+{
+    ip_event_got_ip_t* param = (ip_event_got_ip_t*)pvParameter;
+	/* transform IP to human readable string */
+	char str_ip[16];
+	esp_ip4addr_ntoa(&param->ip_info.ip, str_ip, IP4ADDR_STRLEN_MAX);
+	ESP_LOGI(__func__, "I have a connection and my IP is %s!", str_ip);
+
+    init_sensors();
+}
+
+extern "C" void app_main(void)
+{
+    /* start wifi manager*/
+    wifi_manager_start();
+    /* register a callback when connection is success*/
+    wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &wifi_connect_ok_callback);
+
+    //wifi_manager_disconnect_async();
 }
