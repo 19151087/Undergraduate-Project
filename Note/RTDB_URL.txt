@@ -1,0 +1,9 @@
+https://data-sensors-815db-default-rtdb.asia-southeast1.firebasedatabase.app/
+
+# User account
+
+id: datasensor01@gmail.com
+pass: 123456789
+
+# API key
+UYpWNcImeHufszFM06WIjHEmCtjrDWcai26FKy90

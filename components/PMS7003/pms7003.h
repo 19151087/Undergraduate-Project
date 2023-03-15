@@ -9,6 +9,10 @@
 #include "driver/gpio.h"
 #include "string.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define START_CHARACTER_1   0x42
 #define START_CHARACTER_2   0x4d
 #define PMS7003_DRIVER_BUF_SIZE 1024
@@ -30,6 +34,7 @@
                                     .parity = UART_PARITY_DISABLE,          \
                                     .stop_bits = UART_STOP_BITS_1,          \
                                     .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,  \
+                                    .rx_flow_ctrl_thresh = 122,              \
                                     .source_clk = UART_SCLK_APB,            \
 }
 
@@ -101,5 +106,8 @@ esp_err_t pms7003_requestReadData(void);
  */
 bool pms7003_readData(uint16_t *pm1_0, uint16_t *pm2_5, uint16_t *pm10);
 
+#ifdef __cplusplus
+}
+#endif 
 
-#endif
+#endif // __PMS7003_H__

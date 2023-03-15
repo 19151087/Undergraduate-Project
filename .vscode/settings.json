@@ -1,6 +1,7 @@
 {
     "files.associations": {
-        "pms7003.h": "c"
+        "pms7003.h": "c",
+        "sht3x.h": "c"
     },
     "idf.adapterTargetName": "esp32"
 }
