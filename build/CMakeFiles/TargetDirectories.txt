@@ -683,13 +683,6 @@ C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/Da
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/DataManager/CMakeFiles/install.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/DataManager/CMakeFiles/install/local.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/DataManager/CMakeFiles/install/strip.dir
-C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/DeviceManager/CMakeFiles/__idf_DeviceManager.dir
-C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/DeviceManager/CMakeFiles/edit_cache.dir
-C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/DeviceManager/CMakeFiles/rebuild_cache.dir
-C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/DeviceManager/CMakeFiles/list_install_components.dir
-C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/DeviceManager/CMakeFiles/install.dir
-C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/DeviceManager/CMakeFiles/install/local.dir
-C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/DeviceManager/CMakeFiles/install/strip.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/PMS7003/CMakeFiles/__idf_PMS7003.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/PMS7003/CMakeFiles/edit_cache.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/PMS7003/CMakeFiles/rebuild_cache.dir
@@ -724,6 +717,13 @@ C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/es
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/esp_idf_lib_helpers/CMakeFiles/install.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/esp_idf_lib_helpers/CMakeFiles/install/local.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/esp_idf_lib_helpers/CMakeFiles/install/strip.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/esp_sntp/CMakeFiles/__idf_esp_sntp.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/esp_sntp/CMakeFiles/edit_cache.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/esp_sntp/CMakeFiles/rebuild_cache.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/esp_sntp/CMakeFiles/list_install_components.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/esp_sntp/CMakeFiles/install.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/esp_sntp/CMakeFiles/install/local.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/esp_sntp/CMakeFiles/install/strip.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/example/CMakeFiles/__idf_example.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/example/CMakeFiles/edit_cache.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/example/CMakeFiles/rebuild_cache.dir

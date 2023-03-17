@@ -29,6 +29,9 @@ user_account_t account = {USER_EMAIL, USER_PASSWORD};
 FirebaseApp app = FirebaseApp(API_KEY);
 RTDB db = RTDB(&app, DATABASE_URL);
 
+// NTP time
+uint32_t timeStamp;
+
 // pms_wake_status of PMS7003 sensor (TRUE = Wake up, FALSE = Sleep)
 bool pms_wake_status = false;
 // pms7003 timer callback
@@ -88,9 +91,14 @@ static void getDataFromSensor_task(void *pvParameters)
 
     // login to firebase
     app.loginUserAccount(account);
-    
     std::string json_str = R"({"Temperature": 0, "Humidity": 0, "PM1_0": 0, "PM2_5": 0, "PM10": 0})";
-    db.putData("/dataSensor", json_str.c_str());
+
+    std::string databasePath = "/dataSensor/Indoor";
+    // Get current time
+    timeStamp = getTime();
+    // combine dataPath and timeStamp to create a new path
+    std::string path = databasePath + "/" + std::to_string(timeStamp);
+    db.putData(path.c_str(), json_str.c_str());
     // Parse the json_str and access the members and edit them
     Json::Value data;
     Json::Reader reader;
@@ -116,25 +124,28 @@ static void getDataFromSensor_task(void *pvParameters)
             memcpy(&dataSensor, &currentData, sizeof(dataSensor_st));
 
             // Print data to console
-            printf("Temperature: %.2f °C, Relative humidity: %.2f %%\n", dataSensor.temperature, 
+            printf("Temperature: %.2f °C, Relative humidity: %.2f %%\n", dataSensor.temperature,
                                                         dataSensor.humidity);
-            printf("pm1_0 : %d (ug/m3), pm2_5: %d (ug/m3), pm10: %d (ug/m3) \n",dataSensor.pm1_0, 
-                                                                                dataSensor.pm2_5, 
+            printf("pm1_0 : %d (ug/m3), pm2_5: %d (ug/m3), pm10: %d (ug/m3) \n",dataSensor.pm1_0,
+                                                                                dataSensor.pm2_5,
                                                                                 dataSensor.pm10);
+            printf("Time: %d \n", timeStamp);
 
             data["Temperature"] = dataSensor.temperature;
             data["Humidity"] = dataSensor.humidity;
             data["PM1_0"] = dataSensor.pm1_0;
             data["PM2_5"] = dataSensor.pm2_5;
             data["PM10"] = dataSensor.pm10;
-            db.putData("dataSensor", data);
+            timeStamp = getTime();
+            std::string path = databasePath + "/" + std::to_string(timeStamp);
+            db.putData(path.c_str(), data);
         }
 
         // wait until 10 seconds are over
         vTaskDelayUntil(&last_wakeup, pdMS_TO_TICKS(10000));
     }
 
-    // Delete task
+    // Delete task, can not reach here
     vTaskDelete(NULL);
 }
 
@@ -177,6 +188,10 @@ void wifi_connect_ok_callback(void *pvParameter)
 	esp_ip4addr_ntoa(&param->ip_info.ip, str_ip, IP4ADDR_STRLEN_MAX);
 	ESP_LOGI(__func__, "I have a connection and my IP is %s!", str_ip);
 
+    /* initialize ntp*/
+    Set_SystemTime_SNTP();
+
+    /* initialize sensors */
     init_sensors();
 }
 

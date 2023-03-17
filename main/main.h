@@ -1,4 +1,4 @@
-// Standard includes
+// Standtimeard includes
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,4 +37,4 @@
 #include "esp_firebase/app.h"
 #include "esp_firebase/rtdb.h"
 #include "firebase_config.h"
-#include "wifi_utils.h"
+#include "sntp_sync.h"

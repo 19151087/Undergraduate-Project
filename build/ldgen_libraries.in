@@ -71,11 +71,11 @@ $<TARGET_FILE:__idf_ulp>
 $<TARGET_FILE:__idf_wifi_provisioning>
 $<TARGET_FILE:__idf_main>
 $<TARGET_FILE:__idf_DataManager>
-$<TARGET_FILE:__idf_DeviceManager>
 $<TARGET_FILE:__idf_PMS7003>
 $<TARGET_FILE:__idf_button>
 $<TARGET_FILE:__idf_esp32-wifi-manager>
 $<TARGET_FILE:__idf_esp_firebase>
+$<TARGET_FILE:__idf_esp_sntp>
 $<TARGET_FILE:__idf_example>
 $<TARGET_FILE:__idf_i2cdev>
 $<TARGET_FILE:__idf_jsoncpp>

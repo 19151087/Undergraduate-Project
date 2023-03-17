@@ -165,7 +165,7 @@ esp_err_t FirebaseApp::getAuthToken()
         reader.parse(begin, end, data, false);
         FirebaseApp::auth_token = data["access_token"].asString();
 
-        ESP_LOGD(FIREBASE_APP_TAG, "Auth Token=%s", FirebaseApp::auth_token.c_str());
+        ESP_LOGI(FIREBASE_APP_TAG, "Auth Token=%s", FirebaseApp::auth_token.c_str());
 
         return ESP_OK;
     }
