@@ -1,9 +1,10 @@
-// Standtimeard includes
+// Standard includes
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <iostream>
+//#include <cmath>
 
 // ESP-IDF includes
 #include "driver/gpio.h"

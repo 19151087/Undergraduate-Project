@@ -1,7 +1,3 @@
-// Wifi Credentials
-#define SSID "AP25-2_4GHz"
-#define PASSWORD "Lamquangtri105"
-
 // Read readme.md to properly configure api key and authentication
 
 // create a new api key and add it here 

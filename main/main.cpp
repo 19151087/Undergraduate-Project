@@ -91,7 +91,7 @@ static void getDataFromSensor_task(void *pvParameters)
 
     // login to firebase
     app.loginUserAccount(account);
-    std::string json_str = R"({"Temperature": 0, "Humidity": 0, "PM1_0": 0, "PM2_5": 0, "PM10": 0})";
+    std::string json_str = R"({"Temperature": 0, "Humidity": 0, "PM1_0": 0, "PM2_5": 0, "PM10": 0, "Timestamp": 0})";
 
     std::string databasePath = "/dataSensor/Indoor";
     // Get current time
@@ -131,18 +131,19 @@ static void getDataFromSensor_task(void *pvParameters)
                                                                                 dataSensor.pm10);
             printf("Time: %d \n", timeStamp);
 
+            timeStamp = getTime();
             data["Temperature"] = dataSensor.temperature;
             data["Humidity"] = dataSensor.humidity;
             data["PM1_0"] = dataSensor.pm1_0;
             data["PM2_5"] = dataSensor.pm2_5;
             data["PM10"] = dataSensor.pm10;
-            timeStamp = getTime();
+            data["Timestamp"] = timeStamp;
             std::string path = databasePath + "/" + std::to_string(timeStamp);
             db.putData(path.c_str(), data);
         }
 
         // wait until 10 seconds are over
-        vTaskDelayUntil(&last_wakeup, pdMS_TO_TICKS(10000));
+        vTaskDelayUntil(&last_wakeup, pdMS_TO_TICKS(30000));
     }
 
     // Delete task, can not reach here
