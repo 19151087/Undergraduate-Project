@@ -58,3 +58,5 @@ source "C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/componen
 source "C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/components/esp32-wifi-manager/Kconfig"
 source "C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/components/example/Kconfig"
 source "C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/components/i2cdev/Kconfig"
+source "C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/components/lvgl/Kconfig"
+source "C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/components/lvgl_esp32_drivers/Kconfig"

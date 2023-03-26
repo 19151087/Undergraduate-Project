@@ -8,17 +8,29 @@ uint32_t getTime(void){
     time(&now);
 	localtime_r(&now, &timeinfo);
 
-    // Set timezone to Indian Standard Time
+    // Set timezone to Viet Nam Standard Time
     setenv("TZ", "GMT-07", 1);
     tzset();
     localtime_r(&now, &timeinfo);
     return now;
+}
 
-    
-	//char strftime_buf[64];
-    //strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+void getDate(char *date_time)
+{
+    char strftime_buf[64];
+	time_t now;
+    struct tm timeinfo;
+    time(&now);
+    localtime_r(&now, &timeinfo);
+
+    // Set timezone to Viet Nam Standard Time
+    setenv("TZ", "GMT-07", 1);
+    tzset();
+    localtime_r(&now, &timeinfo);
+
+    strftime(strftime_buf, sizeof(strftime_buf), "%X", &timeinfo);
     //ESP_LOGI(TAG, "The current date/time in Viet Nam is: %s", strftime_buf);
-    //strcpy(date_time,strftime_buf);
+    strcpy(date_time,strftime_buf);
 }
 
 void sntp_init_func(void)

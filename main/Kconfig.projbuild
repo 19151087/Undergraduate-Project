@@ -45,7 +45,7 @@ menu "SHT31 configuration"
         int "SCL GPIO Number"
         default 5 if IDF_TARGET_ESP8266
         default 6 if IDF_TARGET_ESP32C3
-        default 21 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+        default 22 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
         help
             GPIO number for I2C Master clock line.
 
@@ -53,7 +53,87 @@ menu "SHT31 configuration"
         int "SDA GPIO Number"
         default 4 if IDF_TARGET_ESP8266
         default 5 if IDF_TARGET_ESP32C3
-        default 22 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+        default 21 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
         help
             GPIO number for I2C Master data line.
+endmenu
+
+menu "SD Card configuration"
+
+    config PIN_NUM_MOSI
+        int "MOSI GPIO Number"
+        default 19
+        help
+            GPIO number for SPI master MOSI.
+
+    config PIN_NUM_MISO
+        int "MISO GPIO Number"
+        default 21
+        help
+            GPIO number for SPI master MISO.
+
+    config PIN_NUM_CLK
+        int "CLK GPIO Number"
+        default 18
+        help
+            GPIO number for SPI master CLK.
+
+    config PIN_NUM_CS
+        int "CS GPIO Number"
+        default 5
+        help
+            GPIO number for SPI master CS.
+            
+endmenu
+
+menu "RTC configuration"
+
+    config RTC_PIN_NUM_SCL
+        int "SCL GPIO Number"
+        default 27 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+        help
+            GPIO number for I2C Master clock line.
+
+    config RTC_PIN_NUM_SDA
+        int "SDA GPIO Number"
+        default 26 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+        help
+            GPIO number for I2C Master data line.
+
+    config RTC_I2C_PORT
+        int "I2C Port"
+        default 0
+        help 
+            I2C port for RTC module.
+
+    config RTC_I2C_FREQ_HZ
+        int "Frequency I2C"
+        default 400000
+        help
+            I2C frequency.
+
+endmenu
+
+menu "BUTTON GPIO"
+
+    config EXAMPLE_BUTTON1_GPIO
+        int "Button 1 GPIO number"
+        default 14 if IDF_TARGET_ESP8266 || IDF_TARGET_ESP32C3
+        default 25 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+        help
+            GPIO number for the first button
+
+    config EXAMPLE_BUTTON2_GPIO
+        int "Button 2 GPIO number"
+        default 12 if IDF_TARGET_ESP8266 || IDF_TARGET_ESP32C3
+        default 26 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+        help
+            GPIO number for the second button
+
+    config EXAMPLE_BUTTON3_GPIO
+        int "Button 3 GPIO number"
+        default 12 if IDF_TARGET_ESP8266 || IDF_TARGET_ESP32C3
+        default 27 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+        help
+            GPIO number for the second button
 endmenu

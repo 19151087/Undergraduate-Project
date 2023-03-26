@@ -94,7 +94,7 @@ function epochToJsDate(epochTime){
           var temperature = jsonData.Temperature;
           var humidity = jsonData.Humidity;
           var pm2p5 = jsonData.PM2_5;
-          var timestamp = jsonData.Timestamp;
+          var timestamp = jsonData.Timestamp + 25200;
           /*Plot the values on the charts*/
           plotValues(chartT, timestamp, temperature);
           plotValues(chartH, timestamp, humidity);
@@ -140,15 +140,15 @@ function epochToJsDate(epochTime){
       // Get the latest readings and display on cards
       dbRef.orderByKey().limitToLast(1).on('child_added', snapshot =>{
         var jsonData = snapshot.toJSON(); // example: {temperature: 25.02, humidity: 50.20, pressure: 1008.48, timestamp:1641317355}
-        var temperature = jsonData.Temperature;
-        var humidity = jsonData.Humidity;
+        var temperature = Math.round(jsonData.Temperature * 100) / 100;
+        var humidity = Math.round(jsonData.Humidity * 100) / 100;
         var pm2p5 = jsonData.PM2_5;
-        var timestamp = jsonData.Timestamp;
+        var timestampshow = jsonData.Timestamp - 25200;
         // Update DOM elements
         tempElement.innerHTML = temperature;
         humElement.innerHTML = humidity;
         pm2p5Element.innerHTML = pm2p5;
-        updateElement.innerHTML = epochToDateTime(timestamp);
+        updateElement.innerHTML = epochToDateTime(timestampshow);
       });
   
       // GAUGES
@@ -158,7 +158,7 @@ function epochToJsDate(epochTime){
         var temperature = jsonData.Temperature;
         var humidity = jsonData.Humidity;
         //var pressure = jsonData.pressure;
-        var timestamp = jsonData.Timestamp;
+        var timestamp = jsonData.Timestamp + 25200;
       //   // Update DOM elements
         var gaugeT = createTemperatureGauge();
         var gaugeH = createHumidityGauge();

@@ -31,7 +31,6 @@
 #include "button.h"
 #include "pms7003.h"
 #include "sht3x.h"
-#include "datamanager.h"
 #include "wifi_manager.h"
 #include "jsoncpp/value.h"
 #include "jsoncpp/json.h"
@@ -39,3 +38,19 @@
 #include "esp_firebase/rtdb.h"
 #include "firebase_config.h"
 #include "sntp_sync.h"
+
+#include "lvgl.h"
+#include "lvgl_helpers.h"
+#include "lv_port_indev.h"
+
+// data structure for storing sensor data
+typedef struct dataSensor_st {
+    // data from SHT31 sensor
+    float temperature;
+    float humidity;
+
+    // data from PMS7003 sensor
+    uint16_t pm1_0;
+    uint16_t pm2_5;
+    uint16_t pm10;
+} dataSensor_st;

@@ -2,7 +2,8 @@
     "files.associations": {
         "pms7003.h": "c",
         "sht3x.h": "c",
-        "sdkconfig.h": "c"
+        "sdkconfig.h": "c",
+        "sntp_sync.h": "c"
     },
     "idf.adapterTargetName": "esp32"
 }
