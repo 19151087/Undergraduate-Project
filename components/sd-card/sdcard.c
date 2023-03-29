@@ -2,11 +2,12 @@
 
 __attribute__((unused)) static const char *TAG = "SDcard";
 
+// path file: /DataSensor/Indoor/time , time take from DS3231/ntp
 
 esp_err_t sdcard_initialize(esp_vfs_fat_sdmmc_mount_config_t *_mount_config, sdmmc_card_t *_sdcard,
                             sdmmc_host_t *_host, spi_bus_config_t *_bus_config, sdspi_device_config_t *_slot_config)
 {
-    esp_err_t err_code;
+    esp_err_t ret;
     ESP_LOGI(__func__, "Initializing SD card");
 
     // Use settings defined above to initialize SD card and mount FAT filesystem.
@@ -15,28 +16,28 @@ esp_err_t sdcard_initialize(esp_vfs_fat_sdmmc_mount_config_t *_mount_config, sdm
     // production applications.
     ESP_LOGI(__func__, "Using SPI peripheral");
 
-    err_code = spi_bus_initialize(_host->slot, _bus_config, SPI_DMA_CHAN);
-    if (err_code != ESP_OK)
+    ret = spi_bus_initialize(_host->slot, _bus_config, SPI_DMA_CH2);
+    if (ret != ESP_OK)
     {
         ESP_LOGE(__func__, "Failed to initialize bus.");
         ESP_LOGE(__func__, "Failed to initialize the SDcard.");
-        return ESP_ERROR_SD_INIT_FAILED;
+        return ESP_FAIL;
     }
-    _slot_config->gpio_cs = CONFIG_PIN_NUM_CS;
+    _slot_config->gpio_cs = CONFIG_SD_PIN_CS;
     _slot_config->host_id = _host->slot;
 
     ESP_LOGI(__func__, "Mounting filesystem");
-    err_code = esp_vfs_fat_sdspi_mount(mount_point, _host, _slot_config, _mount_config, &_sdcard);
+    ret = esp_vfs_fat_sdspi_mount(mount_point, _host, _slot_config, _mount_config, &_sdcard);
     
-    if (err_code != ESP_OK) {
-        if (err_code == ESP_FAIL) {
+    if (ret != ESP_OK) {
+        if (ret == ESP_FAIL) {
             ESP_LOGE(__func__, "Failed to mount filesystem. "
                      "If you want the card to be formatted, set the EXAMPLE_FORMAT_IF_MOUNT_FAILED menuconfig option.");
         } else {
             ESP_LOGE(__func__, "Failed to initialize the card (%s). "
-                     "Make sure SD card lines have pull-up resistors in place.", esp_err_to_name(err_code));
+                     "Make sure SD card lines have pull-up resistors in place.", esp_err_to_name(ret));
         }
-        return err_code;
+        return ret;
     }
     ESP_LOGI(__func__, "SDCard has been initialized.");
     ESP_LOGI(__func__, "Filesystem mounted");
@@ -48,126 +49,92 @@ esp_err_t sdcard_initialize(esp_vfs_fat_sdmmc_mount_config_t *_mount_config, sdm
 }
 
 
-esp_err_t sdcard_writeDataToFile(const char *nameFile, const char *format, ...)
-{
-    char pathFile[64];
-    sprintf(pathFile, "%s/%s.txt", mount_point, nameFile);
-
-    ESP_LOGI(__func__, "Opening file %s...", pathFile);
-    FILE *file = fopen(pathFile, "a+");
+esp_err_t writetoSDcard(const char* namefile, const char* format, ...) 
+{ 
+    FILE * file = fopen(namefile, "a+"); // open or create file for appending
+    ESP_LOGI(__func__, "Opening file %s ...", namefile);
     if (file == NULL)
     {
-        ESP_LOGE(__func__, "Failed to open file for writing.");
-        return ESP_ERROR_SD_OPEN_FILE_FAILED;
-    }
-    
-    char *dataString;
-    int lenght;
-    va_list argumentsList;
-    va_list argumentsList_copy;
-    va_start(argumentsList, format);
-    va_copy(argumentsList_copy, argumentsList);
-    lenght = vsnprintf(NULL, 0, format, argumentsList_copy);
-    va_end(argumentsList_copy);
-
-    dataString = (char*)malloc(++lenght);
-    if(dataString == NULL) {
-        ESP_LOGE(TAG, "Failed to create string data for writing.");
-        va_end(argumentsList);
+        ESP_LOGE(__func__, "Error opening file %s.", namefile);
         return ESP_FAIL;
     }
 
-    vsnprintf(dataString, (++lenght), format, argumentsList);
-    ESP_LOGI(TAG, "Success to create string data(%d) for writing.", lenght);
-    ESP_LOGI(TAG, "Writing data to file %s...", pathFile);
-    ESP_LOGI(TAG, "%s;\n", dataString);
-
-    int returnValue = 0;
-    returnValue = fprintf(file, "%s", dataString);
-    if (returnValue < 0)
-    {
-        ESP_LOGE(__func__, "Failed to write data to file %s.", pathFile);
-        return ESP_ERROR_SD_WRITE_DATA_FAILED;
+    char *data_str; // declare a pointer to a char
+    va_list args, args_copy; // declare a variable argument list
+    va_start(args, format); // initialize the list with the format parameter
+    va_copy(args_copy, args); // copy the list to another variable
+    int length = vsnprintf(NULL, 0, format, args_copy); // get the length of the string
+    va_end(args_copy); // end the copy list
+    if(length < 0) {
+        ESP_LOGE(__func__, "Failed to create string data for writing.");
+        va_end(args);
+        return ESP_FAIL;
     }
-    ESP_LOGI(__func__, "Success to write data to file %s.", pathFile);
-    fclose(file);
-    va_end(argumentsList);
-    free(dataString);
+    data_str = (char*)malloc(length + 1); // allocate memory for the string
+    if(data_str == NULL) {
+        ESP_LOGE(__func__, "Failed to create string data for writing.");
+        va_end(args);
+        return ESP_FAIL;
+    }
+
+    vsnprintf(data_str, length + 1, format, args); // create the string
+    ESP_LOGI(__func__, "Success to create string data(%d) for writing.", length);
+    ESP_LOGI(__func__, "Writing data to file %s...", namefile);
+    ESP_LOGI(__func__, "%s;\n", data_str);
+
+    int write_result = vfprintf(file, format, args); // write to file
+    if (write_result < 0)
+    {
+        ESP_LOGE(__func__, "Failed to write data to file %s.", namefile);
+        return ESP_FAIL;
+    }
+    ESP_LOGI(__func__, "Success to write data (%d bytes) to file %s.", write_result, namefile);
+    va_end(args); // end the list
+    fclose(file); // close file
+    free(data_str); // free the memory
     return ESP_OK;
 }
 
-
-esp_err_t sdcard_read_data_from_file(const char *nameFile, const char *format, ...)
-{
-    char pathFile[64];
-    sprintf(pathFile, "%s/%s.txt", mount_point, nameFile);
-
-    ESP_LOGI(__func__, "Opening file %s...", pathFile);
-    FILE *file = fopen(pathFile, "r");
+esp_err_t readfromSDcard(const char* namefile, char** data_str) 
+{ 
+    FILE * file = fopen(namefile, "r"); // open file for reading
+    ESP_LOGI(__func__, "Opening file %s ...", namefile);
+    
     if (file == NULL)
     {
-        ESP_LOGE(TAG, "Failed to open file for reading.");
-        return ESP_ERROR_SD_OPEN_FILE_FAILED;
+        ESP_LOGE(__func__, "Error opening file %s.", namefile);
+        return ESP_FAIL; // return an error code
     }
 
-    // Read a string data from file
-    char dataStr[256];
-    char *returnPtr;
-    returnPtr = fgets(dataStr, sizeof(dataStr), file);
-    fclose(file);
+    fseek(file, 0, SEEK_END); // move the file pointer to the end of the file
+    long length = ftell(file); // get the current position of the file pointer (the length of the file)
+    fseek(file, 0, SEEK_SET); // move the file pointer back to the beginning of the file
     
-    if (returnPtr == NULL)
-    {
-        ESP_LOGE(__func__, "Failed to read data from file %s.", pathFile);
-        return ESP_ERROR_SD_READ_DATA_FAILED;
-    }
-
-    va_list argumentsList;
-    va_start(argumentsList, format);
-    int returnValue = 0;
-    returnValue = vsscanf(dataStr, format, argumentsList);
-    va_end(argumentsList);
-
-    if (returnValue < 0)
-    {
-        ESP_LOGE(__func__, "Failed to read data from file %s.", pathFile);
-        return ESP_ERROR_SD_READ_DATA_FAILED;
+    if(length < 0) {
+        ESP_LOGE(__func__, "Error getting the length of the file %s.", namefile);
+        return ESP_FAIL; // return an error code
     }
     
-    return ESP_OK;
-}
-
-esp_err_t sdcard_renameFile(const char *oldNameFile, char *newNameFile)
-{
-    // Check if destination file exists before renaming
-    struct stat st;
-    if (stat(newNameFile, &st) == 0) {
-        ESP_LOGE(__func__, "File \"%s\" exists.", newNameFile);
-        return ESP_ERROR_SD_RENAME_FILE_FAILED;
+    *data_str = (char*)malloc(length + 1); // allocate memory for the string
+    
+    if(*data_str == NULL) {
+        ESP_LOGE(__func__, "Error allocating memory for string data for reading.");
+        return ESP_FAIL; // return an error code
     }
 
-    // Rename original file
-    ESP_LOGI(__func__, "Renaming file %s to %s", oldNameFile, newNameFile);
-    if (rename(oldNameFile, newNameFile) != 0) 
+    size_t read_result = fread(*data_str, 1, length, file); // read the file content into the string
+    (*data_str)[length] = '\0'; // add a null terminator to the end of the string
+    
+    if (read_result != length)
     {
-        ESP_LOGE(__func__, "Rename failed");
-        return ESP_ERROR_SD_RENAME_FILE_FAILED;
-    } else {
-        ESP_LOGI(__func__, "Rename successful");
-        return ESP_OK;
+        ESP_LOGE(__func__, "Error reading data from file %s.", namefile);
+        return ESP_FAIL; // return an error code
     }
+    
+    ESP_LOGI(__func__, "Successfully read data (%d bytes) from file %s.", read_result, namefile);
+    ESP_LOGI(__func__, "Reading data from file %s...", namefile);
+    ESP_LOGI(__func__, "%s;\n", *data_str);
+    
+    fclose(file); // close file
+    return ESP_OK; // return a success code
 }
-
-esp_err_t sdcard_deinitialize(const char* _mount_point, sdmmc_card_t *_sdcard, sdmmc_host_t *_host)
-{
-    ESP_LOGI(__func__, "Deinitializing SD card...");
-    // Unmount partition and disable SPI peripheral.
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_vfs_fat_sdcard_unmount(_mount_point, _sdcard));
-    ESP_LOGI(__func__, "Card unmounted.");
-
-    //deinitialize the bus after all devices are removed
-    ESP_ERROR_CHECK_WITHOUT_ABORT(spi_bus_free(_host->slot));
-    return ESP_OK;
-}
-
-

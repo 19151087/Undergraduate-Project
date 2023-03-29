@@ -11,6 +11,16 @@
 #include "driver/uart.h"
 #include "driver/i2c.h"
 #include "driver/spi_common.h"
+#include "esp_spi_flash.h"
+#include "esp_mac.h"
+#include "esp_chip_info.h"
+
+#include <sys/unistd.h>
+#include <sys/stat.h>
+#include "esp_vfs_fat.h"
+#include "sdmmc_cmd.h"
+
+
 
 // FreeRTOS includes
 #include "freertos/FreeRTOS.h"
@@ -28,6 +38,7 @@
 #include "mqtt_client.h"
 
 // External libraries
+#include "sdcard.h"
 #include "button.h"
 #include "pms7003.h"
 #include "sht3x.h"
@@ -53,4 +64,9 @@ typedef struct dataSensor_st {
     uint16_t pm1_0;
     uint16_t pm2_5;
     uint16_t pm10;
+
+    // timestamp
+    uint32_t timestamp;
 } dataSensor_st;
+
+#define QUEUE_SIZE 10U

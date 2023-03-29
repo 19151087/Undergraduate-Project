@@ -17,6 +17,7 @@ void update_param(void);
 
 char CurrentTime[20];
 lv_obj_t * wifi_label;
+lv_obj_t * mac_adrr_label;
 /*--------------------------Indicate variable in tab 1-------------------------------*/
 lv_obj_t * temp_bar_tab1;
 lv_obj_t * temp_label_tab1;
@@ -52,6 +53,8 @@ lv_indev_t * indev_keypad;
 /*--------------------------MAIN-------------------------------*/
 using namespace ESPFirebase;
 char str_ip[16]; // IP address
+uint8_t mac_adrr[6]; // MAC address
+char str_mac[18]; // string MAC address
 
 #define PMS7003_PERIOD_MS 30000
 
@@ -78,44 +81,45 @@ void reset_btn(void)
 
 TaskHandle_t getDataFromSensorTask_handle = NULL;
 TaskHandle_t sendDataToFirebaseTask_handle = NULL;
-TaskHandle_t saveDataSensorToSDCardTask_handle = NULL;
+TaskHandle_t sendDataToSDCardTask_handle = NULL;
 TaskHandle_t GUITask_handle = NULL;
 
-// Timer handle for sensor
+QueueHandle_t sendDataToSDCardQueue = NULL;
+QueueHandle_t sendDataToFirebaseQueue = NULL;
+
 TimerHandle_t pms7003_timer = NULL;
 TimerHandle_t Date_timer = NULL;
 
-// Mutex for protecting currentData
+
 SemaphoreHandle_t currentDataMutex = NULL;
-SemaphoreHandle_t writeDataToSDCardMutex = NULL;
+SemaphoreHandle_t sendDataToFirebaseMutex = NULL;
+SemaphoreHandle_t sendDataToSDCardMutex = NULL;
 
 uart_config_t pms_uart_config = UART_CONFIG_DEFAULT();
 
 // Initialize struct for storing sensor data
-dataSensor_st dataSensor;
-dataSensor_st currentData;
+dataSensor_st currentDataSensor;
 
-static sht3x_t dev;
+static sht3x_t sht31_dev;
 
 // Firebase config and Authentication
 user_account_t account = {USER_EMAIL, USER_PASSWORD};
 FirebaseApp app = FirebaseApp(API_KEY);
 RTDB db = RTDB(&app, DATABASE_URL);
 
-// NTP time
-uint32_t timeStamp;
 uint8_t restart_esp = 0;
 // pms_wake_status of PMS7003 sensor (TRUE = Wake up, FALSE = Sleep)
 bool pms_wake_status = false;
 
 // Date timer callback
-void Date_timer_callback(TimerHandle_t xTimer)
+static void date_timer_callback(TimerHandle_t xTimer)
 {
     getDate(CurrentTime);
 }
 
+
 // pms7003 timer callback
-void pms7003_timer_callback(TimerHandle_t xTimer)
+static void pms7003_timer_callback(TimerHandle_t xTimer)
 {
     uint16_t pm1_0Temp, pm2_5Temp, pm10Temp;
     // If the sensor wakes up, we will read data from it then put it in sleep mode
@@ -128,9 +132,9 @@ void pms7003_timer_callback(TimerHandle_t xTimer)
             if(xSemaphoreTake(currentDataMutex, portMAX_DELAY) == pdTRUE)
             {
                 // Update the data structure
-                currentData.pm1_0 = pm1_0Temp;
-                currentData.pm2_5 = pm2_5Temp;
-                currentData.pm10 = pm10Temp;
+                currentDataSensor.pm1_0 = pm1_0Temp;
+                currentDataSensor.pm2_5 = pm2_5Temp;
+                currentDataSensor.pm10 = pm10Temp;
                 xSemaphoreGive(currentDataMutex);
             }
         }
@@ -156,8 +160,8 @@ void pms7003_timer_callback(TimerHandle_t xTimer)
 
 static void getDataFromSensor_task(void *pvParameters)
 {
-    float temperatureTemp, humidityTemp;
     TickType_t last_wakeup = xTaskGetTickCount();
+    
     currentDataMutex = xSemaphoreCreateMutex();
     // Prepare for timer callback function
     pms_wake_status = true;
@@ -175,36 +179,63 @@ static void getDataFromSensor_task(void *pvParameters)
         xTimerStart(pms7003_timer, 0);
     }
 
-    while (1)
+    // Get PMS7003 sensor data for the first time
+    static uint16_t pm1_0Temp, pm2_5Temp, pm10Temp;
+    if(pms7003_readData(&pm1_0Temp, &pm2_5Temp, &pm10Temp) == true)
     {
-        // perform one measurement and do something with the results
-        ESP_ERROR_CHECK(sht3x_measure(&dev, &temperatureTemp, &humidityTemp));
-
-        // Lock mutex to protect currentData
+        
         if(xSemaphoreTake(currentDataMutex, portMAX_DELAY) == pdTRUE)
         {
             // Update the data structure
-            currentData.temperature = temperatureTemp;
-            currentData.humidity = humidityTemp;
-            // Release mutex
+            currentDataSensor.pm1_0 = pm1_0Temp;
+            currentDataSensor.pm2_5 = pm2_5Temp;
+            currentDataSensor.pm10 = pm10Temp;
             xSemaphoreGive(currentDataMutex);
         }
-        // Check if any data is updated
-        if(memcmp(&dataSensor, &currentData, sizeof(dataSensor_st)) != 0)
-        {
-            memcpy(&dataSensor, &currentData, sizeof(dataSensor_st));
+    }
+    else
+    {
+        printf("Read data from PMS7003 failed \n");
+    }
 
-            // Print data to console
-            printf("Temperature: %.2f °C, Relative humidity: %.2f %%\n", dataSensor.temperature,
-                                                        dataSensor.humidity);
-            printf("pm1_0 : %d (ug/m3), pm2_5: %d (ug/m3), pm10: %d (ug/m3) \n",dataSensor.pm1_0,
-                                                                                dataSensor.pm2_5,
-                                                                                dataSensor.pm10);
-            //printf("Time: %d \n", timeStamp);
+    while (1)
+    {
+        if(xSemaphoreTake(currentDataMutex, portMAX_DELAY) == pdTRUE)
+        {
+            // Read data from sensor
+            ESP_ERROR_CHECK(sht3x_measure(&sht31_dev, &(currentDataSensor.temperature), &(currentDataSensor.humidity)));
+            currentDataSensor.timestamp = getTime(); // get timestamp
+            xSemaphoreGive(currentDataMutex); // release mutex
+        }
+        
+        // Print data to console
+        printf("Timestamp: %u \n", currentDataSensor.timestamp);
+        printf("Temperature: %.2f °C, Relative humidity: %.2f %%\n", currentDataSensor.temperature,
+                                                                    currentDataSensor.humidity);
+        printf("pm1_0 : %d (ug/m3), pm2_5: %d (ug/m3), pm10: %d (ug/m3) \n",currentDataSensor.pm1_0,
+                                                                            currentDataSensor.pm2_5,
+                                                                            currentDataSensor.pm10);
+
+        if(xQueueSendToBack(sendDataToFirebaseQueue, (void*) &currentDataSensor, pdMS_TO_TICKS(50)) != pdPASS)
+        {
+            ESP_LOGE(__func__, "Failed to send data to sendDataToFirebaseQueue");
+        }
+        else
+        {
+            ESP_LOGI(__func__, "send data to sendDataToFirebaseQueue successfully");
+        }
+
+        if(xQueueSendToBack(sendDataToSDCardQueue, (void*) &currentDataSensor, pdMS_TO_TICKS(50)) != pdPASS)
+        {
+            ESP_LOGE(__func__, "Failed to send data to sendDataToSDCardQueue");
+        }
+        else
+        {
+            ESP_LOGI(__func__, "send data to sendDataToSDCardQueue successfully");
         }
 
         // wait until 10 seconds are over
-        vTaskDelayUntil(&last_wakeup, pdMS_TO_TICKS(30000));
+        vTaskDelayUntil(&last_wakeup, (30000 / portTICK_PERIOD_MS));
     }
 
     // Delete task, can not reach here
@@ -213,88 +244,218 @@ static void getDataFromSensor_task(void *pvParameters)
 
 static void sendDataToFirebase_task(void *pvParameters)
 {
+    
+    bool connectStatus = false;
     // login to firebase
-    app.loginUserAccount(account);
+    if(app.loginUserAccount(account) == ESP_OK)
+    {
+        connectStatus = true;
+    }
+    else
+    {
+        connectStatus = false;
+    }
     std::string json_str = R"({"Temperature": 0, "Humidity": 0, "PM1_0": 0, "PM2_5": 0, "PM10": 0, "Timestamp": 0})";
 
     std::string databasePath = "/dataSensor/Indoor";
     // Get current time
-    timeStamp = getTime();
+    uint32_t timetemp = getTime();
     // combine dataPath and timeStamp to create a new path
-    std::string path = databasePath + "/" + std::to_string(timeStamp);
-    db.putData(path.c_str(), json_str.c_str());
+    std::string path = databasePath + "/" + std::to_string(timetemp);
+    // db.putData(path.c_str(), json_str.c_str());
     // Parse the json_str and access the members and edit them
     Json::Value data;
     Json::Reader reader;
     reader.parse(json_str, data);
     
+    sendDataToFirebaseMutex = xSemaphoreCreateMutex();
+    dataSensor_st ReceivedDataFromQueue;
+
     while (1)
     {
-        timeStamp = getTime();
-        data["Temperature"] = dataSensor.temperature;
-        data["Humidity"] = dataSensor.humidity;
-        data["PM1_0"] = dataSensor.pm1_0;
-        data["PM2_5"] = dataSensor.pm2_5;
-        data["PM10"] = dataSensor.pm10;
-        data["Timestamp"] = timeStamp;
-        std::string path = databasePath + "/" + std::to_string(timeStamp);
-        db.putData(path.c_str(), data);
-        // wait until 10 seconds are over
-        vTaskDelay(pdMS_TO_TICKS(10000));
+        if(connectStatus == true)
+        {
+            if(uxQueueMessagesWaiting(sendDataToFirebaseQueue) != 0)
+            {
+                if(xQueueReceive(sendDataToFirebaseQueue, (void*)&ReceivedDataFromQueue, portMAX_DELAY) == pdPASS)
+                {
+                    if(xSemaphoreTake(sendDataToFirebaseMutex, portMAX_DELAY) == pdTRUE)
+                    {
+                        // Update the json string
+                        data["Temperature"] = ReceivedDataFromQueue.temperature;
+                        data["Humidity"] = ReceivedDataFromQueue.humidity;
+                        data["PM1_0"] = ReceivedDataFromQueue.pm1_0;
+                        data["PM2_5"] = ReceivedDataFromQueue.pm2_5;
+                        data["PM10"] = ReceivedDataFromQueue.pm10;
+                        data["Timestamp"] = ReceivedDataFromQueue.timestamp;
+                        // Create a new timestamp data and put to firebase
+                        std::string path = databasePath + "/" + std::to_string(ReceivedDataFromQueue.timestamp);
+                        db.putData(path.c_str(), data);
+                        xSemaphoreGive(sendDataToFirebaseMutex);
+                    }
+                    else
+                    {
+                        ESP_LOGE(__func__, "Failed to take sendDataToFirebaseMutex");
+                    }
+                }
+                else
+                {
+                    ESP_LOGE(__func__, "Failed to receive data from sendDataToFirebaseQueue");
+                }
+            }
+            else
+            {
+                vTaskDelay(30000 / portTICK_PERIOD_MS); // wait get sensor data task send data to queue
+            }
+        }
     }
 
     // Delete task, can not reach here
     vTaskDelete(NULL);
 }
 
+static void sendDataToSDCard_task(void *pvParameters)
+{
+    dataSensor_st ReceivedDataFromQueue;
+    sendDataToSDCardMutex = xSemaphoreCreateMutex();
+    const char * dataFileName = MOUNT_POINT"/data.txt";
+    esp_err_t e;
+    while (1)
+    {
+        if(uxQueueMessagesWaiting(sendDataToSDCardQueue) != 0)
+        {
+            if(xQueueReceive(sendDataToSDCardQueue, (void*)&ReceivedDataFromQueue, portMAX_DELAY) == pdPASS)
+            {
+                if(xSemaphoreTake(sendDataToSDCardMutex, portMAX_DELAY) == pdTRUE)
+                {
+                    e = writetoSDcard(dataFileName, "%u,%.2f,%.2f,%d,%d,%d\n", ReceivedDataFromQueue.timestamp,
+                                                                                ReceivedDataFromQueue.temperature,
+                                                                                ReceivedDataFromQueue.humidity,
+                                                                                ReceivedDataFromQueue.pm1_0,
+                                                                                ReceivedDataFromQueue.pm2_5,
+                                                                                ReceivedDataFromQueue.pm10);
+
+                    xSemaphoreGive(sendDataToSDCardMutex);
+                    if(e != ESP_OK)
+                    {
+                        ESP_LOGE(__func__, "Failed to write data to SD card");
+                    }
+                    else 
+                    {
+                        ESP_LOGI(__func__, "Write data to SD card successfully");
+                    }
+                }
+                else
+                {
+                    ESP_LOGE(__func__, "Failed to take sendDataToSDCardMutex");
+                }
+            }
+            else
+            {
+                ESP_LOGE(__func__, "Failed to receive data from sendDataToSDCardQueue");
+            }
+        }
+        
+        vTaskDelay(30000 / portTICK_PERIOD_MS); // wait get sensor data task send data to queue
+    }
+
+}
+
+/*----------------------------------*INIT - SENSORS*--------------------------------*/
 void init_sensors(void)
 {
     //Initialize SHT31 sensor
     ESP_ERROR_CHECK(i2cdev_init());
-    memset(&dev, 0, sizeof(sht3x_t));
+    memset(&sht31_dev, 0, sizeof(sht3x_t));
 
-    ESP_ERROR_CHECK(sht3x_init_desc(&dev, // sht31 descriptor
+    ESP_ERROR_CHECK(sht3x_init_desc(&sht31_dev, // sht31 descriptor
                                     CONFIG_SHT31_I2C_ADDR, // i2c address
                                     CONFIG_SHT31_I2C_PORT, // i2c port
                                     (gpio_num_t)CONFIG_SHT31_I2C_MASTER_SDA, // sda pin
                                     (gpio_num_t)CONFIG_SHT31_I2C_MASTER_SCL)); // scl pin
     
-    ESP_ERROR_CHECK(sht3x_init(&dev));
+    ESP_ERROR_CHECK(sht3x_init(&sht31_dev));
 
     // Initialize PMS7003 sensor
     ESP_ERROR_CHECK(pms7003_initUart(&pms_uart_config));
     vTaskDelay(500 / portTICK_PERIOD_MS);
 
     // Create task to get data from sensor
-    xTaskCreate(getDataFromSensor_task, "getDataFromSensor_task", (1024 * 48), NULL, 25, &getDataFromSensorTask_handle);
+    xTaskCreate(getDataFromSensor_task, "getDataFromSensor_task", (1024 * 20), NULL, 25, &getDataFromSensorTask_handle);
 }
 
-// void init_sdcard(void)
-// {
-//     // Initialize SPI Bus
-//     ESP_LOGI(__func__, "Initialize SD card with SPI interface.");
-//     esp_vfs_fat_mount_config_t  mount_config_t   = MOUNT_CONFIG_DEFAULT();
-//     spi_bus_config_t            spi_bus_config_t = SPI_BUS_CONFIG_DEFAULT();
-//     sdmmc_host_t                host_t           = SDSPI_HOST_DEFAULT();
-//     sdspi_device_config_t       slot_config      = SDSPI_DEVICE_CONFIG_DEFAULT();
-//     slot_config.gpio_cs = CONFIG_PIN_NUM_CS;
-//     slot_config.host_id = host_t.slot;
+/*----------------------------------*INIT - SENSORS*--------------------------------*/
+void init_sdcard(void)
+{
+    esp_err_t ret;
+    esp_vfs_fat_sdmmc_mount_config_t mount_config = MOUNT_CONFIG_DEFAULT();
+    sdmmc_card_t *sdcard;
+    sdmmc_host_t host = SDSPI_HOST_VSPI();
+    spi_bus_config_t bus_cfg = SPI_BUS_CONFIG_DEFAULT();
+    ESP_LOGI(TAG, "Initializing SD card using SPI peripheral");
+    ret = spi_bus_initialize((spi_host_device_t)host.slot, &bus_cfg, SPI_DMA_CH2);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize bus.");
+        return;
+    }
+    // This initializes the slot without card detect (CD) and write protect (WP) signals.
+    // Modify slot_config.gpio_cd and slot_config.gpio_wp if your board has these signals.
+    sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
+    slot_config.gpio_cs = (gpio_num_t)CONFIG_SD_PIN_CS;
+    slot_config.host_id = (spi_host_device_t)host.slot;
+    ESP_LOGI(TAG, "Mounting filesystem");
+    ret = esp_vfs_fat_sdspi_mount(mount_point, &host, &slot_config, &mount_config, &sdcard);
+    if (ret != ESP_OK) {
+        if (ret == ESP_FAIL) {
+            ESP_LOGE(TAG, "Failed to mount filesystem. "
+                     "If you want the card to be formatted, set the CONFIG_EXAMPLE_FORMAT_IF_MOUNT_FAILED menuconfig option.");
+        } else {
+            ESP_LOGE(TAG, "Failed to initialize the card (%s). "
+                     "Make sure SD card lines have pull-up resistors in place.", esp_err_to_name(ret));
+        }
+        return;
+    }
+    ESP_LOGI(TAG, "Filesystem mounted");
 
-//     sdmmc_card_t SDCARD;
-//     ESP_ERROR_CHECK_WITHOUT_ABORT(sdcard_initialize(&mount_config_t, &SDCARD, &host_t, &spi_bus_config_t, &slot_config));
-// }
+    // Card has been initialized, print its properties
+    sdmmc_card_print_info(stdout, sdcard);
 
-// void init_rtc(void)
-// {
-//     ESP_LOGI(__func__, "Initialize DS3231 module(I2C/Wire%d).", CONFIG_RTC_I2C_PORT);
-//     memset(&ds3231_device, 0, sizeof(i2c_dev_t));
-//     ESP_ERROR_CHECK_WITHOUT_ABORT(ds3231_initialize(&ds3231_device, 
-//                                                     CONFIG_RTC_I2C_PORT, 
-//                                                     CONFIG_RTC_PIN_NUM_SDA, 
-//                                                     CONFIG_RTC_PIN_NUM_SCL));
-// }
+    // Use POSIX and C standard library functions to work with files.
+    // if the data.txt file doesn't exist create a file on the SD card and write the data labels
+    const char *file_name = MOUNT_POINT"/data.txt";
+    struct stat st;
+    if (stat(file_name, &st) != 0) {
+        ESP_LOGI(TAG, "Opening file %s ...", file_name);
+        FILE *f = fopen(file_name, "w");
+        if (f == NULL) {
+            ESP_LOGE(TAG, "Failed to open file for writing");
+            return;
+        }
+        fprintf(f, "Timestamp, Temperature, Humidity, PM2.5, PM1, PM10 \n");
+        fclose(f);
+        ESP_LOGI(TAG, "File written");
+    }
+    else {
+        ESP_LOGI(TAG, "File already exists");
+    }
+    char* data_str;
+    readfromSDcard(file_name, &data_str); // call the function
+    free(data_str); // free the memory
 
-/*----------------------------------*WIFI-CONNECTION*--------------------------------*/
+    xTaskCreate(sendDataToSDCard_task, "sendDataToSDCard_task", (1024 * 16), NULL, 9, &sendDataToSDCardTask_handle);
+}
+
+void init_rtc(void)
+{
+    // ESP_LOGI(__func__, "Initialize DS3231 module(I2C/Wire%d).", CONFIG_RTC_I2C_PORT);
+    // memset(&ds3231_device, 0, sizeof(i2c_dev_t));
+    // ESP_ERROR_CHECK_WITHOUT_ABORT(ds3231_initialize(&ds3231_device, 
+    //                                                 CONFIG_RTC_I2C_PORT, 
+    //                                                 CONFIG_RTC_PIN_NUM_SDA, 
+    //                                                 CONFIG_RTC_PIN_NUM_SCL));
+}
+
+/*----------------------------------*WIFI - CONNECTION*--------------------------------*/
 
 /* wifi callback */
 void wifi_connect_ok_callback(void *pvParameter)
@@ -302,7 +463,10 @@ void wifi_connect_ok_callback(void *pvParameter)
     ip_event_got_ip_t* param = (ip_event_got_ip_t*)pvParameter;
 	/* transform IP to human readable string */
 	esp_ip4addr_ntoa(&param->ip_info.ip, str_ip, IP4ADDR_STRLEN_MAX);
+    esp_read_mac(mac_adrr, ESP_MAC_WIFI_STA);
+    sprintf(str_mac, "%02x:%02x:%02x:%02x:%02x:%02x", mac_adrr[0], mac_adrr[1], mac_adrr[2], mac_adrr[3], mac_adrr[4], mac_adrr[5]);
 	ESP_LOGI(__func__, "I have a connection and my IP is %s!", str_ip);
+    ESP_LOGI(__func__, "My MAC is %s!", str_mac);
     /* initialize ntp*/
     Set_SystemTime_SNTP();
     /* initialize sensor */
@@ -344,13 +508,13 @@ static void guiTask(void *pvParameter) {
     ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, LV_TICK_PERIOD_MS * 1000));
 
     
-    //screen1();
+    screen1();
 
     while (1) {
         /* Delay 1 tick (assumes FreeRTOS tick is 10ms */
         vTaskDelay(pdMS_TO_TICKS(10));
 
-        //update_param();
+        update_param();
 
         if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY)) {
             lv_task_handler();
@@ -398,6 +562,9 @@ void act_tabhome(lv_obj_t *parent)
     wifi_label = lv_label_create(parent);
     lv_label_set_text_fmt(wifi_label, "WIFI ip address: %s", str_ip);
     lv_obj_align(wifi_label, LV_ALIGN_TOP_LEFT, 0, 0);
+    mac_adrr_label = lv_label_create(parent);
+    lv_label_set_text_fmt(mac_adrr_label, "MAC address: %s", str_mac);
+    lv_obj_align_to(mac_adrr_label, wifi_label, LV_ALIGN_LEFT_MID, 0, 20);
 
 }
 
@@ -456,12 +623,12 @@ void act_tab1(lv_obj_t * parent)
     lv_obj_set_size(temp_bar_tab1, 20, 100);
     lv_obj_align(temp_bar_tab1, LV_ALIGN_LEFT_MID, 0, 15);
     lv_bar_set_range(temp_bar_tab1, -20, 40);
-    lv_bar_set_value(temp_bar_tab1, dataSensor.temperature, LV_ANIM_ON);
+    lv_bar_set_value(temp_bar_tab1, currentDataSensor.temperature, LV_ANIM_ON);
 
     temp_label_tab1 = lv_label_create(temp_frame);
     lv_obj_add_style(temp_label_tab1, &txt_style, 0);
     lv_obj_align(temp_label_tab1, LV_ALIGN_RIGHT_MID, 0, -15);
-    lv_label_set_text_fmt(temp_label_tab1, " %.2f °C", dataSensor.temperature);
+    lv_label_set_text_fmt(temp_label_tab1, " %.2f °C", currentDataSensor.temperature);
 
     /* Humidity*/
     hum_gauge_tab1 = lv_arc_create(hum_frame);
@@ -470,27 +637,27 @@ void act_tab1(lv_obj_t * parent)
     lv_arc_set_rotation(hum_gauge_tab1, 180);
     lv_arc_set_bg_angles(hum_gauge_tab1, 0, 180);
     lv_obj_align(hum_gauge_tab1, LV_ALIGN_CENTER, 0, 30);
-    lv_arc_set_value(hum_gauge_tab1, dataSensor.humidity);
+    lv_arc_set_value(hum_gauge_tab1, currentDataSensor.humidity);
 
     hum_label_tab1 = lv_label_create(hum_frame);
     lv_obj_add_style(hum_label_tab1, &txt_style, 0);
     lv_obj_align_to(hum_label_tab1, hum_gauge_tab1, LV_ALIGN_CENTER, -15, 0);
-    lv_label_set_text_fmt(hum_label_tab1, " %.2f %%", dataSensor.humidity);
+    lv_label_set_text_fmt(hum_label_tab1, " %.2f %%", currentDataSensor.humidity);
 
     pm2p5_label_tab1 = lv_label_create(pm_frame);
     lv_obj_align(pm2p5_label_tab1, LV_ALIGN_LEFT_MID, 0, -15);
     lv_label_set_recolor(pm2p5_label_tab1, true);
-    lv_label_set_text_fmt(pm2p5_label_tab1, "#FE3301 PM2.5: %d \tug/m3#", dataSensor.pm2_5);
+    lv_label_set_text_fmt(pm2p5_label_tab1, "#FE3301 PM2.5: %d \tug/m3#", currentDataSensor.pm2_5);
 
     pm10_label_tab1 = lv_label_create(pm_frame);
     lv_obj_align(pm10_label_tab1, LV_ALIGN_LEFT_MID, 0, 0);
     lv_label_set_recolor(pm10_label_tab1, true);
-    lv_label_set_text_fmt(pm10_label_tab1, "#01FE01 PM10: %d \tug/m3#", dataSensor.pm10);
+    lv_label_set_text_fmt(pm10_label_tab1, "#01FE01 PM10: %d \tug/m3#", currentDataSensor.pm10);
 
     pm1_label_tab1 = lv_label_create(pm_frame);
     lv_obj_align(pm1_label_tab1, LV_ALIGN_LEFT_MID, 0, 15);
     lv_label_set_recolor(pm1_label_tab1, true);
-    lv_label_set_text_fmt(pm1_label_tab1, "#0180FE PM1: %d \t\tug/m3#", dataSensor.pm1_0);
+    lv_label_set_text_fmt(pm1_label_tab1, "#0180FE PM1: %d \t\tug/m3#", currentDataSensor.pm1_0);
 
     /* Title*/
     lv_obj_t * temp_title_tab1 = lv_label_create(temp_frame);
@@ -523,19 +690,19 @@ void act_tab2(lv_obj_t * parent)
     lv_obj_add_style(pm2p5_label_tab2, &indic1_style, 0);
     lv_obj_align(pm2p5_label_tab2, LV_ALIGN_RIGHT_MID, 0, -30);
     lv_style_set_text_color(&indic1_style, lv_palette_main(LV_PALETTE_RED));
-    lv_label_set_text_fmt(pm2p5_label_tab2, "PM2.5: %d \tug/m3", dataSensor.pm2_5);
+    lv_label_set_text_fmt(pm2p5_label_tab2, "PM2.5: %d \tug/m3", currentDataSensor.pm2_5);
 
     pm10_label_tab2 = lv_label_create(parent);
     lv_obj_add_style(pm10_label_tab2, &indic2_style, 0);
     lv_obj_align(pm10_label_tab2, LV_ALIGN_RIGHT_MID, 0, 0);
     lv_style_set_text_color(&indic2_style, lv_palette_main(LV_PALETTE_GREEN));
-    lv_label_set_text_fmt(pm10_label_tab2, "PM10: %d \tug/m3", dataSensor.pm10);
+    lv_label_set_text_fmt(pm10_label_tab2, "PM10: %d \tug/m3", currentDataSensor.pm10);
 
     pm1_label_tab2 = lv_label_create(parent);
     lv_obj_add_style(pm1_label_tab2, &indic3_style, 0);
     lv_obj_align(pm1_label_tab2, LV_ALIGN_RIGHT_MID, 0, 30);
     lv_style_set_text_color(&indic3_style, lv_palette_main(LV_PALETTE_BLUE));
-    lv_label_set_text_fmt(pm1_label_tab2, "PM1: %d \tug/m3", dataSensor.pm1_0);
+    lv_label_set_text_fmt(pm1_label_tab2, "PM1: %d \tug/m3", currentDataSensor.pm1_0);
 
     pm_meter_tab2 = lv_meter_create(parent);
     lv_obj_align(pm_meter_tab2, LV_ALIGN_CENTER, -70, -5);
@@ -555,9 +722,9 @@ void act_tab2(lv_obj_t * parent)
     indic_pm10_tab2 = lv_meter_add_arc(pm_meter_tab2, scale, 10, lv_palette_main(LV_PALETTE_GREEN), -10);
     indic_pm1_tab2 = lv_meter_add_arc(pm_meter_tab2, scale, 10, lv_palette_main(LV_PALETTE_BLUE), -20);
 
-    lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm2p5_tab2, dataSensor.pm2_5);
-    lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm10_tab2, dataSensor.pm10);
-    lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm1_tab2, dataSensor.pm1_0);
+    lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm2p5_tab2, currentDataSensor.pm2_5);
+    lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm10_tab2, currentDataSensor.pm10);
+    lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm1_tab2, currentDataSensor.pm1_0);
 }
 /*-------------------------------- TAB - 3--------------------------------*/
 void act_tab3(lv_obj_t * parent)
@@ -636,35 +803,36 @@ void act_tab3(lv_obj_t * parent)
 void update_param(void)
 {
     lv_label_set_text_fmt(wifi_label, "WIFI ip address: %s", str_ip);
+    lv_label_set_text_fmt(mac_adrr_label, "MAC address: %s", str_mac);
     /* tab 1*/
     lv_label_set_text_fmt(date_label, "%s", CurrentTime);
     
     char temp_update[10];
     char hum_update[10];
-    lv_bar_set_value(temp_bar_tab1, dataSensor.temperature, LV_ANIM_ON);
-    sprintf(temp_update, "%.2f °C", dataSensor.temperature);
+    lv_bar_set_value(temp_bar_tab1, currentDataSensor.temperature, LV_ANIM_ON);
+    sprintf(temp_update, "%.2f °C", currentDataSensor.temperature);
     lv_label_set_text(temp_label_tab1, temp_update);
 
-    lv_arc_set_value(hum_gauge_tab1, dataSensor.humidity);
-    sprintf(hum_update, "%.2f %%", dataSensor.humidity);
+    lv_arc_set_value(hum_gauge_tab1, currentDataSensor.humidity);
+    sprintf(hum_update, "%.2f %%", currentDataSensor.humidity);
     lv_label_set_text(hum_label_tab1, hum_update);
 
-    lv_label_set_text_fmt(pm2p5_label_tab1, "#FE3301 PM2.5: %d \tug/m3#", dataSensor.pm2_5);
-    lv_label_set_text_fmt(pm10_label_tab1, "#01FE01 PM10: %d \tug/m3#", dataSensor.pm10);
-    lv_label_set_text_fmt(pm1_label_tab1, "#0180FE PM1: %d \tug/m3#", dataSensor.pm1_0);
+    lv_label_set_text_fmt(pm2p5_label_tab1, "#FE3301 PM2.5: %d \tug/m3#", currentDataSensor.pm2_5);
+    lv_label_set_text_fmt(pm10_label_tab1, "#01FE01 PM10: %d \tug/m3#", currentDataSensor.pm10);
+    lv_label_set_text_fmt(pm1_label_tab1, "#0180FE PM1: %d \tug/m3#", currentDataSensor.pm1_0);
     
     /* tab 2*/
-    lv_label_set_text_fmt(pm2p5_label_tab2, "PM2.5: %d \tug/m3", dataSensor.pm2_5);
-    lv_label_set_text_fmt(pm10_label_tab2, "PM10: %d \tug/m3", dataSensor.pm10);
-    lv_label_set_text_fmt(pm1_label_tab2, "PM1: %d \tug/m3", dataSensor.pm1_0);
+    lv_label_set_text_fmt(pm2p5_label_tab2, "PM2.5: %d \tug/m3", currentDataSensor.pm2_5);
+    lv_label_set_text_fmt(pm10_label_tab2, "PM10: %d \tug/m3", currentDataSensor.pm10);
+    lv_label_set_text_fmt(pm1_label_tab2, "PM1: %d \tug/m3", currentDataSensor.pm1_0);
 
-    lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm2p5_tab2, dataSensor.pm2_5);
-    lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm10_tab2, dataSensor.pm10);
-    lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm1_tab2, dataSensor.pm1_0);
+    lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm2p5_tab2, currentDataSensor.pm2_5);
+    lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm10_tab2, currentDataSensor.pm10);
+    lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm1_tab2, currentDataSensor.pm1_0);
 
     /* tab 3*/
-    lv_meter_set_indicator_value(temp_meter_tab3, temp_indic_tab3, dataSensor.temperature);
-    lv_meter_set_indicator_value(hum_meter_tab3, hum_indic_tab3, dataSensor.humidity);
+    lv_meter_set_indicator_value(temp_meter_tab3, temp_indic_tab3, currentDataSensor.temperature);
+    lv_meter_set_indicator_value(hum_meter_tab3, hum_indic_tab3, currentDataSensor.humidity);
 }
 
 static void lv_tick_task(void *arg) {
@@ -673,38 +841,40 @@ static void lv_tick_task(void *arg) {
 }
 
 extern "C" void app_main(void)
-{
+{    
+    // Allow other core to finish initialization
+    vTaskDelay(pdMS_TO_TICKS(200)); 
+    ESP_LOGI("ESP_info", "Minimum free heap size: %d bytes\r\n", esp_get_minimum_free_heap_size());
+
+    // Booting firmware
+    ESP_LOGI(__func__, "Booting....");
     
-    reset_btn();
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+    reset_btn(); // press for 2 seconds to reset wifi config and reset esp32
         
-    // Initialize software timer to update date
-    Date_timer = xTimerCreate("Date_timer", 1000 / portTICK_PERIOD_MS, pdTRUE, (void *) 0, Date_timer_callback);
-    if(Date_timer != NULL)
-    {
-        xTimerStart(Date_timer, 0);
-    }
     /* start wifi manager*/
     wifi_manager_start();
     /* register a callback when connection is success*/
     wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &wifi_connect_ok_callback);
-    xTaskCreatePinnedToCore(guiTask, "gui", (1024 * 4), NULL, 5, NULL, 1);
 
     //wifi_manager_set_callback(WM_EVENT_STA_DISCONNECTED, &wifi_disconnect_callback);
     
+    // Initialize software timer to update date
+    Date_timer = xTimerCreate("Date_timer", 1000 / portTICK_PERIOD_MS, pdTRUE, (void *) 0, date_timer_callback);
+    if(Date_timer != NULL)
+    {
+        xTimerStart(Date_timer, 0);
+    }
+
+    // Create data send queue
+    sendDataToSDCardQueue = xQueueCreate(QUEUE_SIZE, sizeof(struct dataSensor_st));
+    sendDataToFirebaseQueue = xQueueCreate(QUEUE_SIZE, sizeof(struct dataSensor_st));
+
+    xTaskCreatePinnedToCore(guiTask, "gui", (1024 * 4), NULL, 5, NULL, 1);
+
     /* initialize sdcard */
-    //init_sdcard();
+    init_sdcard();
     /* initialize rtc */
     //init_rtc();
-
-    // // Create dataSensorQueue
-    // dataSensorSentToSD_queue = xQueueCreate(QUEUE_SIZE, sizeof(struct dataSensor_st));
-    // while (dataSensorSentToSD_queue == NULL)
-    // {
-    //     ESP_LOGE(__func__, "Create dataSensorSentToSD Queue failed.");
-    //     ESP_LOGI(__func__, "Retry to create dataSensorSentToSD Queue...");
-    //     vTaskDelay(500 / portTICK_RATE_MS);
-    //     dataSensorSentToSD_queue = xQueueCreate(QUEUE_SIZE, sizeof(struct dataSensor_st));
-    // };
-    // ESP_LOGI(__func__, "Create dataSensorSentToSD Queue success.");
-
 }

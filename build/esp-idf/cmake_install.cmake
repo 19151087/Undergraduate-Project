@@ -134,6 +134,7 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   include("C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/lvgl/cmake_install.cmake")
   include("C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/lvgl_esp32_drivers/cmake_install.cmake")
   include("C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/lvgl_porting_indev/cmake_install.cmake")
+  include("C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/sd-card/cmake_install.cmake")
   include("C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/sht3x/cmake_install.cmake")
 
 endif()

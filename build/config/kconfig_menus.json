@@ -2148,54 +2148,6 @@
             {
                 "children": [],
                 "depends_on": null,
-                "help": "GPIO number for SPI master MOSI.",
-                "id": "PIN_NUM_MOSI",
-                "name": "PIN_NUM_MOSI",
-                "range": null,
-                "title": "MOSI GPIO Number",
-                "type": "int"
-            },
-            {
-                "children": [],
-                "depends_on": null,
-                "help": "GPIO number for SPI master MISO.",
-                "id": "PIN_NUM_MISO",
-                "name": "PIN_NUM_MISO",
-                "range": null,
-                "title": "MISO GPIO Number",
-                "type": "int"
-            },
-            {
-                "children": [],
-                "depends_on": null,
-                "help": "GPIO number for SPI master CLK.",
-                "id": "PIN_NUM_CLK",
-                "name": "PIN_NUM_CLK",
-                "range": null,
-                "title": "CLK GPIO Number",
-                "type": "int"
-            },
-            {
-                "children": [],
-                "depends_on": null,
-                "help": "GPIO number for SPI master CS.",
-                "id": "PIN_NUM_CS",
-                "name": "PIN_NUM_CS",
-                "range": null,
-                "title": "CS GPIO Number",
-                "type": "int"
-            }
-        ],
-        "depends_on": null,
-        "id": "sd-card-configuration",
-        "title": "SD Card configuration",
-        "type": "menu"
-    },
-    {
-        "children": [
-            {
-                "children": [],
-                "depends_on": null,
                 "help": "GPIO number for I2C Master clock line.",
                 "id": "RTC_PIN_NUM_SCL",
                 "name": "RTC_PIN_NUM_SCL",
@@ -2275,6 +2227,54 @@
         "depends_on": null,
         "id": "button-gpio",
         "title": "BUTTON GPIO",
+        "type": "menu"
+    },
+    {
+        "children": [
+            {
+                "children": [],
+                "depends_on": null,
+                "help": "GPIO number for SPI master MOSI.",
+                "id": "SD_PIN_MOSI",
+                "name": "SD_PIN_MOSI",
+                "range": null,
+                "title": "SDCARD MOSI GPIO Number",
+                "type": "int"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": "GPIO number for SPI master MISO.",
+                "id": "SD_PIN_MISO",
+                "name": "SD_PIN_MISO",
+                "range": null,
+                "title": "SDCARD MISO GPIO Number",
+                "type": "int"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": "GPIO number for SPI master CLK.",
+                "id": "SD_PIN_CLK",
+                "name": "SD_PIN_CLK",
+                "range": null,
+                "title": "SDCARD CLK GPIO Number",
+                "type": "int"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": "GPIO number for SPI master CS.",
+                "id": "SD_PIN_CS",
+                "name": "SD_PIN_CS",
+                "range": null,
+                "title": "SDCARD CS GPIO Number",
+                "type": "int"
+            }
+        ],
+        "depends_on": null,
+        "id": "sd-card-configuration",
+        "title": "SD Card configuration",
         "type": "menu"
     },
     {

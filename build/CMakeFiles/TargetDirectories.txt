@@ -135,6 +135,13 @@ C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/pa
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/partition_table/CMakeFiles/install/local.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/partition_table/CMakeFiles/install/strip.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/app_update/CMakeFiles/__idf_app_update.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/app_update/CMakeFiles/blank_ota_data.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/app_update/CMakeFiles/read-otadata.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/app_update/CMakeFiles/read_otadata.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/app_update/CMakeFiles/erase-otadata.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/app_update/CMakeFiles/erase_otadata.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/app_update/CMakeFiles/otadata-flash.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/app_update/CMakeFiles/encrypted-otadata-flash.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/app_update/CMakeFiles/edit_cache.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/app_update/CMakeFiles/rebuild_cache.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/app_update/CMakeFiles/list_install_components.dir
@@ -759,6 +766,13 @@ C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/lv
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/lvgl_porting_indev/CMakeFiles/install.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/lvgl_porting_indev/CMakeFiles/install/local.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/lvgl_porting_indev/CMakeFiles/install/strip.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/sd-card/CMakeFiles/__idf_sd-card.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/sd-card/CMakeFiles/edit_cache.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/sd-card/CMakeFiles/rebuild_cache.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/sd-card/CMakeFiles/list_install_components.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/sd-card/CMakeFiles/install.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/sd-card/CMakeFiles/install/local.dir
+C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/sd-card/CMakeFiles/install/strip.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/sht3x/CMakeFiles/__idf_sht3x.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/sht3x/CMakeFiles/edit_cache.dir
 C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/sht3x/CMakeFiles/rebuild_cache.dir

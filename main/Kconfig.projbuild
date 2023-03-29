@@ -58,34 +58,6 @@ menu "SHT31 configuration"
             GPIO number for I2C Master data line.
 endmenu
 
-menu "SD Card configuration"
-
-    config PIN_NUM_MOSI
-        int "MOSI GPIO Number"
-        default 19
-        help
-            GPIO number for SPI master MOSI.
-
-    config PIN_NUM_MISO
-        int "MISO GPIO Number"
-        default 21
-        help
-            GPIO number for SPI master MISO.
-
-    config PIN_NUM_CLK
-        int "CLK GPIO Number"
-        default 18
-        help
-            GPIO number for SPI master CLK.
-
-    config PIN_NUM_CS
-        int "CS GPIO Number"
-        default 5
-        help
-            GPIO number for SPI master CS.
-            
-endmenu
-
 menu "RTC configuration"
 
     config RTC_PIN_NUM_SCL
@@ -111,7 +83,6 @@ menu "RTC configuration"
         default 400000
         help
             I2C frequency.
-
 endmenu
 
 menu "BUTTON GPIO"
