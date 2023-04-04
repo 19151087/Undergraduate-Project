@@ -1,21 +1,21 @@
-document.addEventListener("DOMContentLoaded", function(){
+document.addEventListener("DOMContentLoaded", function () {
     // listen for auth status changes
     auth.onAuthStateChanged(user => {
         if (user) {
-          console.log("user logged in");
-          console.log(user);
-          setupUI(user);
+            console.log("user logged in");
+            console.log(user);
+            setupUI(user);
         } else {
-          console.log("user logged out");
-          setupUI();
+            console.log("user logged out");
+            setupUI();
         }
     });
 
     // login
-    const loginForm = document.querySelector('#login-form');
+    const loginForm = document.querySelector('.login-form');
     loginForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        // get user info
+        e.preventDefault(); // prevent form from submitting
+        // retrieve email and password
         const email = loginForm['input-email'].value;
         const password = loginForm['input-password'].value;
         // log the user in
@@ -24,12 +24,12 @@ document.addEventListener("DOMContentLoaded", function(){
             loginForm.reset();
             console.log(email);
         })
-        .catch((error) =>{
-            const errorCode = error.code;
-            const errorMessage = error.message;
-            document.getElementById("error-message").innerHTML = errorMessage;
-            console.log(errorMessage);
-        });
+            .catch((error) => {
+                const errorCode = error.code;
+                const errorMessage = error.message;
+                document.getElementById("error-message").innerHTML = errorMessage;
+                console.log(errorMessage);
+            });
     });
 
     // logout

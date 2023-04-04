@@ -1,32 +1,28 @@
 // Create the charts when the web page loads
 window.addEventListener('load', onload);
 
-function onload(event){
+function onload(event) {
   chartT = createTemperatureChart();
   chartH = createHumidityChart();
-  chartPM = createPM2p5Chart();
+  chartPM = createPMChart();
 }
 
 // Create Temperature Chart
 function createTemperatureChart() {
   var chart = new Highcharts.Chart({
-    chart:{ 
-      renderTo:'chart-temperature',
-      type: 'spline' 
+    chart: {
+      renderTo: 'chart-temperature'
+      // type: 'spline'
     },
-    series: [
-      {
-        name: 'SHT31'
-      }
-    ],
-    title: { 
-      text: undefined
+    series: [{ name: 'Temperature' }],
+    title: {
+      text: 'Graph of temperature changing over time'
     },
     plotOptions: {
-      line: { 
+      line: {
         animation: false,
-        dataLabels: { 
-          enabled: true 
+        dataLabels: {
+          enabled: false
         }
       }
     },
@@ -35,39 +31,56 @@ function createTemperatureChart() {
       dateTimeLabelFormats: { second: '%H:%M:%S' }
     },
     yAxis: {
-      title: { 
-        text: 'Temperature Celsius Degrees' 
+      title: {
+        text: 'Temperature Celsius Degrees'
       }
     },
-    credits: { 
-      enabled: false 
+    tooltip: {
+      headerFormat: '<b>{series.name}</b><br/>',
+      pointFormat: '{point.x:%Y-%m-%d %H:%M:%S}<br/>{point.y:.2f}'
+    },
+    accessibility: {
+      announceNewData: {
+        enabled: true,
+        minAnnounceInterval: 15000,
+        announcementFormatter: function (allSeries, newSeries, newPoint) {
+          if (newPoint) {
+            return 'New point added. Value: ' + newPoint.y;
+          }
+          return false;
+        }
+      }
+    },
+    exporting: {
+      enabled: false
+    },
+    credits: {
+      enabled: false
     }
   });
   return chart;
 }
 
 // Create Humidity Chart
-function createHumidityChart(){
+function createHumidityChart() {
   var chart = new Highcharts.Chart({
-    chart:{ 
-      renderTo:'chart-humidity',
-      type: 'spline'  
+    chart: {
+      renderTo: 'chart-humidity'
+      // type: 'spline'
     },
-    series: [{
-      name: 'SHT31'
-    }],
-    title: { 
-      text: undefined
-    },    
+    series: [{ name: 'Humidity' }],
+    title: {
+      text: 'Graph of humidity changing over time'
+    },
     plotOptions: {
-      line: { 
+      line: {
         animation: false,
-        dataLabels: { 
-          enabled: true 
+        dataLabels: {
+          enabled: false
         }
       },
-      series: { 
-        color: '#50b8b4' 
+      series: {
+        color: '#50b8b4'
       }
     },
     xAxis: {
@@ -75,53 +88,116 @@ function createHumidityChart(){
       dateTimeLabelFormats: { second: '%H:%M:%S' }
     },
     yAxis: {
-      title: { 
-        text: 'Humidity (%)' 
+      title: {
+        text: 'Humidity (%)'
       }
     },
-    credits: { 
-      enabled: false 
+    tooltip: {
+      headerFormat: '<b>{series.name}</b><br/>',
+      pointFormat: '{point.x:%Y-%m-%d %H:%M:%S}<br/>{point.y:.2f}'
+    },
+    accessibility: {
+      announceNewData: {
+        enabled: true,
+        minAnnounceInterval: 15000,
+        announcementFormatter: function (allSeries, newSeries, newPoint) {
+          if (newPoint) {
+            return 'New point added. Value: ' + newPoint.y;
+          }
+          return false;
+        }
+      }
+    },
+    exporting: {
+      enabled: false
+    },
+    credits: {
+      enabled: false
     }
   });
   return chart;
 }
 
-// //Create PM2.5 Chart
-function createPM2p5Chart() {
+// Create PM Chart
+function createPMChart() {
   var chart = new Highcharts.Chart({
-    chart:{ 
-      renderTo:'chart-pm2p5',
-      type: 'spline'
+    chart: {
+      renderTo: 'chart-pm'
+      // type: 'spline',
+      // animation: Highcharts.svg, // don't animate in old IE
+      // marginRight: 10
     },
-    series: [{
-      name: 'PMS7003'
-    }],
-    title: { 
-      text: undefined
-    },    
-    plotOptions: {
-      line: { 
-        animation: false,
-        dataLabels: { 
-          enabled: true 
+    time: {
+      useUTC: false
+    },
+    title: {
+      text: 'Chart of particular matter index in the air over time'
+    },
+    accessibility: {
+      announceNewData: {
+        enabled: true,
+        minAnnounceInterval: 15000,
+        announcementFormatter: function (allSeries, newSeries, newPoint) {
+          if (newPoint) {
+            return 'New point added. Value: ' + newPoint.y;
+          }
+          return false;
         }
-      },
-      series: { 
-        color: '#A62639' 
       }
     },
     xAxis: {
       type: 'datetime',
-      dateTimeLabelFormats: { second: '%H:%M:%S' }
+      tickPixelInterval: 150
     },
-    yAxis: {
-      title: { 
-        text: 'PM2.5 (ug/m3)' 
-      }
+    yAxis: [{
+      title: {
+        text: 'Particulate Matter (ug/m3)'
+      },
+      plotLines: [{
+        value: 0,
+        width: 1,
+        color: '#808080'
+      }]
+    }],
+    tooltip: {
+      headerFormat: '<b>{series.name}</b><br/>',
+      pointFormat: '{point.x:%Y-%m-%d %H:%M:%S}<br/>{point.y}'
     },
-    credits: { 
-      enabled: false 
+    series: [
+      { name: 'PM 2.5' },
+      { name: 'PM 10' },
+      { name: 'PM 1' }
+    ],
+    legend: {
+      enabled: true
+    },
+    exporting: {
+      enabled: false
+    },
+    credits: {
+      enabled: false
     }
   });
   return chart;
 }
+
+/*
+events: {
+        load: function () {
+          // set up the updating of the chart each second
+          var series = this.series[0];
+          var series2 = this.series[1];
+          var series3 = this.series[2];
+          setInterval(
+            function () {
+              var x = (new Date()).getTime(), // current time
+                y = Math.floor((Math.random() * 40) + 1),
+                z = Math.floor((Math.random() * 30) + 1),
+                w = Math.floor((Math.random() * 50) + 1);
+              series.addPoint([x, y], false, true);
+              series2.addPoint([x, z], true, true);
+              series3.addPoint([x, w], true, true);
+            }, 1000);
+        }
+      }
+*/

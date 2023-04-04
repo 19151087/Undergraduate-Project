@@ -1,204 +1,267 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ESP Datalogging Firebase App</title>
 
-    <!-- include Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.8.1/firebase-app.js"></script>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Air Quality Monitor App</title>
+  <!-- include Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.8.1/firebase-app.js"></script>
+  <!-- include only the Firebase features as you need -->
+  <script src="https://www.gstatic.com/firebasejs/8.8.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.8.1/firebase-database.js"></script>
+  <script>
+    // Replace with your app config object
+    const firebaseConfig = {
+      apiKey: "AIzaSyB0lwJYNuPwd3b2WmZfdmmRT-FOAp5DsWs",
+      authDomain: "data-sensors-815db.firebaseapp.com",
+      databaseURL: "https://data-sensors-815db-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "data-sensors-815db",
+      storageBucket: "data-sensors-815db.appspot.com",
+      messagingSenderId: "870584753157",
+      appId: "1:870584753157:web:92cbe216c2e1f71560906c",
+      measurementId: "G-LGXEBQ3E8X"
+    };
 
-    <!-- include only the Firebase features as you need -->
-    <script src="https://www.gstatic.com/firebasejs/8.8.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.8.1/firebase-database.js"></script>
+    // Initialize firebase
+    firebase.initializeApp(firebaseConfig);
 
-    <script>
-      // Replace with your app config object
-      const firebaseConfig = {
-        apiKey: "AIzaSyB0lwJYNuPwd3b2WmZfdmmRT-FOAp5DsWs",
-        authDomain: "data-sensors-815db.firebaseapp.com",
-        databaseURL: "https://data-sensors-815db-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "data-sensors-815db",
-        storageBucket: "data-sensors-815db.appspot.com",
-        messagingSenderId: "870584753157",
-        appId: "1:870584753157:web:92cbe216c2e1f71560906c",
-        measurementId: "G-LGXEBQ3E8X"
-      };
+    // Make auth and database references
+    const auth = firebase.auth();
+    const db = firebase.database();
 
-      // Initialize firebase
-      firebase.initializeApp(firebaseConfig);
+  </script>
 
-      // Make auth and database references
-      const auth = firebase.auth();
-      const db = firebase.database();
+  <!-- include highchartsjs to build the charts-->
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/highcharts-more.js"></script>
+  <script src="https://code.highcharts.com/modules/solid-gauge.js"></script>
+  <script src="https://code.highcharts.com/modules/exporting.js"></script>
+  <script src="https://code.highcharts.com/modules/export-data.js"></script>
+  <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+  <!-- include to use jquery-->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <!--include icons from fontawesome-->
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css"
+    integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+  <!-- Boxicons -->
+  <link href='https://unpkg.com/boxicons@2.0.9/css/boxicons.min.css' rel='stylesheet'>
+  <!-- include Gauges Javascript library-->
+  <script src="https://cdn.rawgit.com/Mikhus/canvas-gauges/gh-pages/download/2.1.7/all/gauge.min.js"></script>
+  <!--reference for favicon-->
+  <link rel="shortcut icon" href="favicon.ico">
+  <!--reference a stylesheet-->
+  <link rel="stylesheet" type="text/css" href="style.css">
 
-    </script>
+</head>
 
-    <!-- include highchartsjs to build the charts-->
-    <script src="https://code.highcharts.com/highcharts.js"></script>
-    <!-- include to use jquery-->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <!--include icons from fontawesome-->
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
-    <!-- include Gauges Javascript library-->
-    <script src="https://cdn.rawgit.com/Mikhus/canvas-gauges/gh-pages/download/2.1.7/all/gauge.min.js"></script>
-    <!--reference for favicon-->
-    <link rel="icon" type="image/png" href="favicon.png">
-    <!--reference a stylesheet-->
-    <link rel="stylesheet" type="text/css" href="style.css">
-
-  </head>
-
-  <body>
-
-    <!--TOP BAR-->
-    <div class="topnav">
-      <h1>AIR QUALITY MONITORING<i class="fas fa-seedling" style = "padding-left: 7px"></i></h1>
+<body>
+  <!-- LOGIN FORM -->
+  <form class="login-form" style="display: none;">
+    <h1>Login</h1>
+    <div class="login-txtb">
+      <input type="text" placeholder="Enter email" id="input-email" required>
+      <input type="password" placeholder="Enter password" id="input-password" required>
     </div>
-
-    <!--AUTHENTICATION BAR (USER DETAILS/LOGOUT BUTTON)-->
-    <div id="authentication-bar" style="display: none;">
-      <p><span id="authentication-status">User logged in</span>
-        <span id="user-details">USEREMAIL</span>
-        <a href="/" id="logout-link">(logout)</a>
-      </p>
+    <button type="submit" id="login-button">Login</button>
+    <!-- error message -->
+    <p id="error-message" style="color:red;"></p>
+  </form>
+  <!-- MAIN DASHBOARD -->
+  <section class="content" id="content" style="display: none;">
+    <!-- Navigation bar -->
+    <div class="authentication-bar" style="display: none;">
+      <div class="nav">
+        <ul class="nav-list">
+          <li class="nav-item">
+            <a href="index.html">Home</a>
+          </li>
+          <li class="nav-item">
+            <a href="https://www.facebook.com/lamquangtri.01/">Contact</a>
+          </li>
+          <li class="nav-item">Introduction</li>
+        </ul>
+        <ul class="nav-list">
+          <li class="nav-item">
+            <span id="user-details">USEREMAIL</span>
+          </li>
+          <li class="nav-item">
+            <a href="/" id="logout-link"><i class="fas fa-sign-out-alt"></i></a>
+          </li>
+        </ul>
+      </div>
     </div>
-
-    <!--LOGIN FORM-->
-    <form id="login-form" style="display: none;">
-      <div class="form-elements-container">
-        <label for="input-email"><b>Email</b></label>
-        <input type="text" placeholder="Enter Username" id="input-email" required>
-
-        <label for="input-password"><b>Password</b></label>
-        <input type="password" placeholder="Enter Password" id="input-password" required>
-
-        <button type="submit" id="login-button">Login</button>
-        <p id="error-message" style="color:red;"></p>
-      </div>
-    </form>
-
-    <!--CONTENT (SENSOR READINGS)-->
-    <div class="content-sign-in" id="content-sign-in" style="display: none;">
-
-      <!--LAST UPDATE-->
-      <p><span class ="date-time">Last update: <span id="lastUpdate"></span></span></p>
-      <p>
-        Cards: <input type="checkbox" id="cards-checkbox" name="cards-checkbox" checked>
-        Gauges: <input type="checkbox" id="gauges-checkbox" name="gauges-checkbox" checked>
-        Charts: <input type="checkbox" id="charts-checkbox" name="charts-checkbox" unchecked>
-      </p>
-      <div id="cards-div">
-        <div class="cards">
-          <!--TEMPERATURE-->
-          <div class="card">
-            <p><i class="fas fa-thermometer-half" style="color:#059e8a;"></i> TEMPERATURE</p>
-            <p><span class="reading"><span id="temp"></span> &deg;C</span></p>
-          </div>
-          <!--HUMIDITY-->
-          <div class="card">
-            <p><i class="fas fa-tint" style="color:#00add6;"></i> HUMIDITY</p>
-            <p><span class="reading"><span id="hum"></span> &percnt;</span></p>
-          </div>
-          <!--PM2.5-->
-          <div class="card">
-            <p><i class="fas fa-certificate" style="color:#b46112;"></i> PM 2.5</p>
-            <p><span class="reading"><span id="pm2p5"></span> ug/m3</span></p>
-          </div>
+    <!-- Main content -->
+    <main>
+      <div class="head-title">
+        <div class="left">
+          <h1>Dashboard</h1>
+          <ul class="breadcrumb">
+            <li>
+              <a class="active" href="#">Home</a>
+            </li>
+            <li>
+              <i class="bx bx-chevron-right"></i>
+            </li>
+            <li>
+              <a href="#">Dashboard</a>
+            </li>
+          </ul>
         </div>
-      </div>
-      <!--GAUGES-->
-      <div id ="gauges-div">
-        <div class="cards">
-          <!--TEMPERATURE-->
-          <div class="card">
-            <canvas id="gauge-temperature"></canvas>
-          </div>
-          <!--HUMIDITY-->
-          <div class="card">
-            <canvas id="gauge-humidity"></canvas>
-          </div>
+        <div class="right">
+          <p>
+            <span class="date-time">Last update: <span id="lastUpdate"></span></span>
+          </p>
         </div>
       </div>
 
-      <!--CHARTS-->
-      <div id="charts-div" style="display:none">
-        <!--SET NUMBER OF READINGS INPUT FIELD-->
-        <div>
-          <p> Number of readings: <input type="number" id="charts-range"></p>
-        </div>
-        <!--TEMPERATURE-CHART-->
-        <div class="cards">
-          <div class="card">
-            <p><i class="fas fa-thermometer-half" style="color:#059e8a;"></i> TEMPERATURE CHART</p>
-            <div id="chart-temperature" class="chart-container"></div>
+      <!-- box info -->
+      <div class="cards-div">
+        <h2 class="card-title">Air quality index</h2>
+        <ul class="box-info">
+          <li class="card">
+            <!-- Temperature -->
+            <i class='bx bxs-thermometer'></i>
+            <span class="text">
+              <span class="reading"><span id="temp"></span> &deg;C</span>
+              <p>Temperature</p>
+            </span>
+          </li>
+          <li class="card">
+            <!-- Humidity -->
+            <i class='bx bxl-tailwind-css'></i>
+            <span class="text">
+              <span class="reading"><span id="hum"></span> &percnt;RH</span>
+              <p>Humidity</p>
+            </span>
+          </li>
+          <li class="card">
+            <!-- PM 2.5 -->
+            <i class='bx bxs-certification'></i>
+            <span class="text">
+              <span class="reading"><span id="pm2p5"></span> ug/m3</span>
+              <p>PM 2.5</p>
+            </span>
+          </li>
+          <li class="card">
+            <!-- PM 1 -->
+            <i class='bx bxs-certification'></i>
+            <span class="text">
+              <span class="reading"><span id="pm10"></span> ug/m3</span>
+              <p>PM 10</p>
+            </span>
+          </li>
+          <li class="card">
+            <!-- PM 10 -->
+            <i class='bx bxs-certification'></i>
+            <span class="text">
+              <span class="reading"><span id="pm1"></span> ug/m3</span>
+              <p>PM 1</p>
+            </span>
+          </li>
+        </ul>
+      </div>
+      <!-- gauges -->
+      <div class="gauges-div">
+        <h2 class="gauge-title">Gauges</h2>
+        <div class="gauge-container">
+          <div class="gauge">
+            <div class="head">
+              <h3>Temperature</h3>
+            </div>
+            <figure class="gauge-figure">
+              <div id="gauge-temperature"></div>
+            </figure>
           </div>
-        </div>
-        <!--HUMIDITY-CHART-->
-        <div class="cards">
-          <div class="card">
-            <p><i class="fas fa-tint" style="color:#00add6;"></i> HUMIDITY CHART</p>
-            <div id="chart-humidity" class="chart-container"></div>
+          <div class="gauge">
+            <div class="head">
+              <h3>Humidity</h3>
+            </div>
+            <figure class="gauge-figure">
+              <div id="gauge-humidity"></div>
+            </figure>
           </div>
-        </div>
-        <!--PRESSURE-CHART-->
-        <div class="cards">
-          <div class="card">
-            <p><i class="fas fa-certificate" style="color:#b46112;"></i> PM2.5 CHART</p>
-            <div id="chart-pm2p5" class="chart-container"></div>
+          <div class="gauge">
+            <div class="head">
+              <h3>Particulate matter</h3>
+            </div>
+            <figure class="gauge-figure">
+              <div id="gauge-pm"></div>
+            </figure>
           </div>
         </div>
       </div>
-
-    <!--BUTTONS TO HANDLE DATA-->
-    <p>
-      <!--View data button-->
-      <button id="view-data-button">View all data</button>
-      <!--Hide data button-->
-      <button id="hide-data-button" style= "display:none;">Hide data</button>
-      <!--Delete data button-->
-      <button id="delete-button" class="deletebtn">Delete data</button>
-    </p>
+      <div class="chart-table-div">
+        <!-- charts -->
+        <div class="charts-div">
+          <h2 class="chart-title">Charts</h2>
+          <div>
+            <p> Number of data in chart: <input type="number" id="charts-range"></p>
+          </div>
+          <div class="chart-container">
+            <div class="chart">
+              <figure class="chart-figure">
+                <div id="chart-temperature"></div>
+              </figure>
+            </div>
+            <div class="chart">
+              <figure class="chart-figure">
+                <div id="chart-humidity"></div>
+              </figure>
+            </div>
+            <div class="chart">
+              <figure class="chart-figure">
+                <div id="chart-pm"></div>
+              </figure>
+            </div>
+          </div>
+        </div>
+        <!-- table/ datalogging style="display:none;" -->
+        <div class="tables-div">
+          <h2 class="table-title">Data logging table</h2>
+          <div class="table-container">
+            <table id="readings-table">
+              <tr id="theader">
+                <th>Timestamp</th>
+                <th>Temperature</th>
+                <th>Humidity</th>
+                <th>PM 1</th>
+                <th>PM 2.5</th>
+                <th>PM 10</th>
+              </tr>
+              <tbody id="tbody">
+              </tbody>
+            </table>
+          </div>
+          <p class="data-button" style="display: flex; justify-content: space-between;">
+            <button id="load-data">Load more data</button>
+            <button id="delete-button" class="deletebtn">Delete data</button>
+          </p>
+        </div>
+      </div>
+    </main>
     <!--Modal to delete data-->
-    <div id="delete-modal" class="modal" sytle="display:none">
-      <span onclick = "document.getElementById('delete-modal').style.display='none'" class="close" title="Close Modal">×</span>
-      <form id= "delete-data-form" class="modal-content" action="/">
-        <div class="container">
+    <div id="delete-modal" class="modal">
+      <form id="delete-data-form" class="modal-content" action="/">
+        <div class="form-container">
           <h1>Delete Data</h1>
           <p>Are you sure you want to delete all data from database?</p>
           <div class="clearfix">
-            <button type="button" onclick="document.getElementById('delete-modal').style.display='none'" class="cancelbtn">Cancel</button>
-            <button type="submit" onclick="document.getElementById('delete-modal').style.display='none'" class="deletebtn">Delete</button>
+            <button type="button" onclick="document.getElementById('delete-modal').style.display='none'"
+              class="cancelbtn">Cancel</button>
+            <button type="submit" onclick="document.getElementById('delete-modal').style.display='none'"
+              class="deletebtn">Delete</button>
           </div>
         </div>
       </form>
     </div>
+  </section>
 
-    <!--TABLE WITH ALL DATA-->
-    <div class ="cards">
-      <div class="card" id="table-container" style= "display:none;">
-        <table id="readings-table">
-            <tr id="theader">
-              <th>Timestamp</th>
-              <th>Temp (ºC)</th>
-              <th>Hum (%)</th>
-              <th>PM 2.5 (ug/m3)</th>
-            </tr>
-            <tbody id="tbody">
-            </tbody>
-        </table>
-        <p><button id="load-data" style= "display:none;">More results...</button></p>
-      </div>
-    </div>
-
-  </div>
-
-    <!--INCLUDE JS FILES-->
-    <script src="scripts/auth.js"></script>
-    <script src="scripts/charts-definition.js"></script>
-    <script src="scripts/gauges-definition.js"></script>
-    <script src="scripts/index.js"></script>
-
-  </body>
+  <!--INCLUDE JS FILES-->
+  <script src=" scripts/auth.js"></script>
+  <script src="scripts/charts-definition.js"></script>
+  <script src="scripts/gauges-definition.js"></script>
+  <script src="scripts/index.js"></script>
+</body>
 
 </html>
