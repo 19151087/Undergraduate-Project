@@ -1,8 +1,8 @@
-# Install script for directory: C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/components/example
+# Install script for directory: C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/GraduateThesis-Project/components/example
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "C:/Program Files (x86)/Undergraduate-Project")
+  set(CMAKE_INSTALL_PREFIX "C:/Program Files (x86)/GraduateThesis-Project")
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 

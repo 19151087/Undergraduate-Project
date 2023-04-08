@@ -1,4 +1,4 @@
-/* * Data converted from C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/mbedtls/x509_crt_bundle
+/* * Data converted from C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/GraduateThesis-Project/build/esp-idf/mbedtls/x509_crt_bundle
  */
 .data
 .section .rodata.embedded

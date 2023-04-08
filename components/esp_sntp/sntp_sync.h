@@ -11,49 +11,49 @@
 #include "esp_sntp.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-/**
- * @brief Get current date time
- * 
- * @return timestamp
- */
-uint32_t getTime(void);
+    /**
+     * @brief Get current date time
+     *
+     * @return timestamp
+     */
+    uint32_t sntp_getTime(void);
 
-/**
- * @brief Get current date time
- * 
- * @param date_time
- * @return void
- */
-void getDate(char *date_time);
+    /**
+     * @brief Get current date
+     *
+     * @param date_time
+     * @return void
+     */
+    void sntp_getDate(char *date_time);
 
-/**
-* @brief Initialize SNTP
-*
-* @return void
-*/
-void sntp_init_func(void);
+    /**
+     * @brief Initialize SNTP
+     *
+     * @return void
+     */
+    void sntp_init_func(void);
 
-/**
- * @brief Get time
- * 
- * @return void
- */
-void obtainTime(void);
+    /**
+     * @brief Sync time from SNTP server
+     *
+     * @return true if successfully sync, false if failed to sync
+     */
+    bool obtainTime(void);
 
-/**
- * @brief Check sync
- * 
- * @return void
- */
-void Set_SystemTime_SNTP(void);
-
+    /**
+     * @brief Check sync
+     *
+     * @return void
+     */
+    void Set_SystemTime_SNTP(void);
 
 #ifdef __cplusplus
 }
-#endif 
+#endif
 
 #endif
 

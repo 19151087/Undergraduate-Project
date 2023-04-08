@@ -121,7 +121,7 @@ const setupUI = (user) => {
       /* Delete all data from charts to update with new values when a new range is selected */
       chartT.destroy();
       chartH.destroy();
-      // chartPM.destroy();
+      chartPM.destroy();
       /*Render new charts to display new range of data*/
       chartT = createTemperatureChart();
       chartH = createHumidityChart();

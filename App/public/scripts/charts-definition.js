@@ -11,8 +11,11 @@ function onload(event) {
 function createTemperatureChart() {
   var chart = new Highcharts.Chart({
     chart: {
-      renderTo: 'chart-temperature'
-      // type: 'spline'
+      renderTo: 'chart-temperature',
+      type: 'spline'
+    },
+    time: {
+      useUTC: false
     },
     series: [{ name: 'Temperature' }],
     title: {
@@ -65,8 +68,11 @@ function createTemperatureChart() {
 function createHumidityChart() {
   var chart = new Highcharts.Chart({
     chart: {
-      renderTo: 'chart-humidity'
-      // type: 'spline'
+      renderTo: 'chart-humidity',
+      type: 'spline'
+    },
+    time: {
+      useUTC: false
     },
     series: [{ name: 'Humidity' }],
     title: {
@@ -122,8 +128,8 @@ function createHumidityChart() {
 function createPMChart() {
   var chart = new Highcharts.Chart({
     chart: {
-      renderTo: 'chart-pm'
-      // type: 'spline',
+      renderTo: 'chart-pm',
+      type: 'spline',
       // animation: Highcharts.svg, // don't animate in old IE
       // marginRight: 10
     },

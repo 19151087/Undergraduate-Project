@@ -515,7 +515,7 @@ body.dark {
 }
 
 #content main .chart-table-div .tables-div .table-container #readings-table tr th {
-  padding: 0 14px;
+  padding: 0 13px;
   color: var(--dark);
   font-size: 18px;
 }

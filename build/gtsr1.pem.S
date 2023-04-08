@@ -1,4 +1,4 @@
-/* * Data converted from C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/components/esp_firebase/gtsr1.pem
+/* * Data converted from C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/GraduateThesis-Project/components/esp_firebase/gtsr1.pem
  * (null byte appended)
  */
 .data

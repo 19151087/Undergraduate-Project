@@ -2,7 +2,7 @@
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "C:/Program Files (x86)/Undergraduate-Project")
+  set(CMAKE_INSTALL_PREFIX "C:/Program Files (x86)/GraduateThesis-Project")
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -39,7 +39,7 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/esp-idf/esp_system/port/cmake_install.cmake")
+  include("C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/GraduateThesis-Project/build/esp-idf/esp_system/port/cmake_install.cmake")
 
 endif()
 

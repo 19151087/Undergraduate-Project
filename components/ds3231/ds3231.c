@@ -43,35 +43,41 @@
 #define I2C_FREQ_HZ 400000
 
 #define DS3231_STAT_OSCILLATOR 0x80
-#define DS3231_STAT_32KHZ      0x08
-#define DS3231_STAT_ALARM_2    0x02
-#define DS3231_STAT_ALARM_1    0x01
+#define DS3231_STAT_32KHZ 0x08
+#define DS3231_STAT_ALARM_2 0x02
+#define DS3231_STAT_ALARM_1 0x01
 
-#define DS3231_CTRL_OSCILLATOR    0x80
-#define DS3231_CTRL_TEMPCONV      0x20
-#define DS3231_CTRL_ALARM_INTS    0x04
-#define DS3231_CTRL_ALARM2_INT    0x02
-#define DS3231_CTRL_ALARM1_INT    0x01
+#define DS3231_CTRL_OSCILLATOR 0x80
+#define DS3231_CTRL_TEMPCONV 0x20
+#define DS3231_CTRL_ALARM_INTS 0x04
+#define DS3231_CTRL_ALARM2_INT 0x02
+#define DS3231_CTRL_ALARM1_INT 0x01
 
-#define DS3231_ALARM_WDAY   0x40
+#define DS3231_ALARM_WDAY 0x40
 #define DS3231_ALARM_NOTSET 0x80
 
-#define DS3231_ADDR_TIME    0x00
-#define DS3231_ADDR_ALARM1  0x07
-#define DS3231_ADDR_ALARM2  0x0b
+#define DS3231_ADDR_TIME 0x00
+#define DS3231_ADDR_ALARM1 0x07
+#define DS3231_ADDR_ALARM2 0x0b
 #define DS3231_ADDR_CONTROL 0x0e
-#define DS3231_ADDR_STATUS  0x0f
-#define DS3231_ADDR_AGING   0x10
-#define DS3231_ADDR_TEMP    0x11
+#define DS3231_ADDR_STATUS 0x0f
+#define DS3231_ADDR_AGING 0x10
+#define DS3231_ADDR_TEMP 0x11
 
-#define DS3231_12HOUR_FLAG  0x40
-#define DS3231_12HOUR_MASK  0x1f
-#define DS3231_PM_FLAG      0x20
-#define DS3231_MONTH_MASK   0x1f
+#define DS3231_12HOUR_FLAG 0x40
+#define DS3231_12HOUR_MASK 0x1f
+#define DS3231_PM_FLAG 0x20
+#define DS3231_MONTH_MASK 0x1f
 
-#define CHECK_ARG(ARG) do { if (!(ARG)) return ESP_ERR_INVALID_ARG; } while (0)
+#define CHECK_ARG(ARG)                  \
+    do                                  \
+    {                                   \
+        if (!(ARG))                     \
+            return ESP_ERR_INVALID_ARG; \
+    } while (0)
 
-enum {
+enum
+{
     DS3231_SET = 0,
     DS3231_CLEAR,
     DS3231_REPLACE
@@ -95,9 +101,9 @@ esp_err_t ds3231_init_desc(i2c_dev_t *dev, i2c_port_t port, gpio_num_t sda_gpio,
     dev->addr = DS3231_ADDR;
     dev->cfg.sda_io_num = sda_gpio;
     dev->cfg.scl_io_num = scl_gpio;
-#if HELPER_TARGET_IS_ESP32
+    // #if HELPER_TARGET_IS_ESP32
     dev->cfg.master.clk_speed = I2C_FREQ_HZ;
-#endif
+    // #endif
     return i2c_dev_create_mutex(dev);
 }
 
@@ -132,8 +138,32 @@ esp_err_t ds3231_set_time(i2c_dev_t *dev, struct tm *time)
     return ESP_OK;
 }
 
+esp_err_t ds3231_get_timestamp(i2c_dev_t *dev, uint32_t *timestamp)
+{
+    CHECK_ARG(dev && timestamp);
+
+    uint8_t data[7];
+
+    I2C_DEV_TAKE_MUTEX(dev);
+    I2C_DEV_CHECK(dev, i2c_dev_read_reg(dev, DS3231_ADDR_TIME, data, 7));
+    I2C_DEV_GIVE_MUTEX(dev);
+
+    struct tm time;
+    time.tm_sec = bcd2dec(data[0]);
+    time.tm_min = bcd2dec(data[1]);
+    time.tm_hour = bcd2dec(data[2]);
+    time.tm_wday = bcd2dec(data[3]) - 1;
+    time.tm_mday = bcd2dec(data[4]);
+    time.tm_mon = bcd2dec(data[5]) - 1;
+    time.tm_year = bcd2dec(data[6]) + 100;
+
+    time_t stamptemp = mktime(&time);
+    *timestamp = (uint32_t)stamptemp;
+    return ESP_OK;
+}
+
 esp_err_t ds3231_set_alarm(i2c_dev_t *dev, ds3231_alarm_t alarms, struct tm *time1,
-        ds3231_alarm1_rate_t option1, struct tm *time2, ds3231_alarm2_rate_t option2)
+                           ds3231_alarm1_rate_t option1, struct tm *time2, ds3231_alarm2_rate_t option2)
 {
     CHECK_ARG(dev);
 
@@ -147,8 +177,7 @@ esp_err_t ds3231_set_alarm(i2c_dev_t *dev, ds3231_alarm_t alarms, struct tm *tim
         data[i++] = (option1 >= DS3231_ALARM1_MATCH_SEC ? dec2bcd(time1->tm_sec) : DS3231_ALARM_NOTSET);
         data[i++] = (option1 >= DS3231_ALARM1_MATCH_SECMIN ? dec2bcd(time1->tm_min) : DS3231_ALARM_NOTSET);
         data[i++] = (option1 >= DS3231_ALARM1_MATCH_SECMINHOUR ? dec2bcd(time1->tm_hour) : DS3231_ALARM_NOTSET);
-        data[i++] = (option1 == DS3231_ALARM1_MATCH_SECMINHOURDAY ? (dec2bcd(time1->tm_wday + 1) & DS3231_ALARM_WDAY) :
-            (option1 == DS3231_ALARM1_MATCH_SECMINHOURDATE ? dec2bcd(time1->tm_mday) : DS3231_ALARM_NOTSET));
+        data[i++] = (option1 == DS3231_ALARM1_MATCH_SECMINHOURDAY ? (dec2bcd(time1->tm_wday + 1) & DS3231_ALARM_WDAY) : (option1 == DS3231_ALARM1_MATCH_SECMINHOURDATE ? dec2bcd(time1->tm_mday) : DS3231_ALARM_NOTSET));
     }
 
     /* alarm 2 data */
@@ -157,8 +186,7 @@ esp_err_t ds3231_set_alarm(i2c_dev_t *dev, ds3231_alarm_t alarms, struct tm *tim
         CHECK_ARG(time2);
         data[i++] = (option2 >= DS3231_ALARM2_MATCH_MIN ? dec2bcd(time2->tm_min) : DS3231_ALARM_NOTSET);
         data[i++] = (option2 >= DS3231_ALARM2_MATCH_MINHOUR ? dec2bcd(time2->tm_hour) : DS3231_ALARM_NOTSET);
-        data[i++] = (option2 == DS3231_ALARM2_MATCH_MINHOURDAY ? (dec2bcd(time2->tm_wday + 1) & DS3231_ALARM_WDAY) :
-            (option2 == DS3231_ALARM2_MATCH_MINHOURDATE ? dec2bcd(time2->tm_mday) : DS3231_ALARM_NOTSET));
+        data[i++] = (option2 == DS3231_ALARM2_MATCH_MINHOURDAY ? (dec2bcd(time2->tm_wday + 1) & DS3231_ALARM_WDAY) : (option2 == DS3231_ALARM2_MATCH_MINHOURDATE ? dec2bcd(time2->tm_mday) : DS3231_ALARM_NOTSET));
     }
 
     I2C_DEV_TAKE_MUTEX(dev);
@@ -347,8 +375,7 @@ esp_err_t ds3231_set_squarewave_freq(i2c_dev_t *dev, ds3231_sqwave_freq_t freq)
     return ESP_OK;
 }
 
-
-esp_err_t ds3231_get_squarewave_freq(i2c_dev_t *dev, ds3231_sqwave_freq_t* freq)
+esp_err_t ds3231_get_squarewave_freq(i2c_dev_t *dev, ds3231_sqwave_freq_t *freq)
 {
     CHECK_ARG(dev);
 
@@ -359,11 +386,10 @@ esp_err_t ds3231_get_squarewave_freq(i2c_dev_t *dev, ds3231_sqwave_freq_t* freq)
     I2C_DEV_GIVE_MUTEX(dev);
 
     flag &= DS3231_SQWAVE_8192HZ;
-    *freq = (ds3231_sqwave_freq_t) flag;
+    *freq = (ds3231_sqwave_freq_t)flag;
 
     return ESP_OK;
 }
-
 
 esp_err_t ds3231_get_raw_temp(i2c_dev_t *dev, int16_t *temp)
 {
@@ -425,27 +451,28 @@ esp_err_t ds3231_get_time(i2c_dev_t *dev, struct tm *time)
         /* 12H */
         time->tm_hour = bcd2dec(data[2] & DS3231_12HOUR_MASK) - 1;
         /* AM/PM? */
-        if (data[2] & DS3231_PM_FLAG) time->tm_hour += 12;
+        if (data[2] & DS3231_PM_FLAG)
+            time->tm_hour += 12;
     }
-    else time->tm_hour = bcd2dec(data[2]); /* 24H */
+    else
+        time->tm_hour = bcd2dec(data[2]); /* 24H */
     time->tm_wday = bcd2dec(data[3]) - 1;
     time->tm_mday = bcd2dec(data[4]);
-    time->tm_mon  = bcd2dec(data[5] & DS3231_MONTH_MASK) - 1;
+    time->tm_mon = bcd2dec(data[5] & DS3231_MONTH_MASK) - 1;
     time->tm_year = bcd2dec(data[6]) + 100;
     time->tm_isdst = 0;
 
     // apply a time zone (if you are not using localtime on the rtc or you want to check/apply DST)
-    //applyTZ(time);
+    // applyTZ(time);
 
     return ESP_OK;
 }
-
 
 esp_err_t ds3231_set_aging_offset(i2c_dev_t *dev, int8_t age)
 {
     CHECK_ARG(dev);
 
-    uint8_t age_u8 = (uint8_t) age;
+    uint8_t age_u8 = (uint8_t)age;
 
     I2C_DEV_TAKE_MUTEX(dev);
     I2C_DEV_CHECK(dev, i2c_dev_write_reg(dev, DS3231_ADDR_AGING, &age_u8, sizeof(uint8_t)));
@@ -462,7 +489,6 @@ esp_err_t ds3231_set_aging_offset(i2c_dev_t *dev, int8_t age)
     return ESP_OK;
 }
 
-
 esp_err_t ds3231_get_aging_offset(i2c_dev_t *dev, int8_t *age)
 {
     CHECK_ARG(dev && age);
@@ -473,7 +499,7 @@ esp_err_t ds3231_get_aging_offset(i2c_dev_t *dev, int8_t *age)
     I2C_DEV_CHECK(dev, i2c_dev_read_reg(dev, DS3231_ADDR_AGING, &age_u8, sizeof(uint8_t)));
     I2C_DEV_GIVE_MUTEX(dev);
 
-    *age = (int8_t) age_u8;
+    *age = (int8_t)age_u8;
 
     return ESP_OK;
 }

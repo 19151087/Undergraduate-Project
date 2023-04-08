@@ -1,4 +1,4 @@
-/* * Data converted from C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/components/esp32-wifi-manager/WebConfig/code.js
+/* * Data converted from C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/GraduateThesis-Project/components/esp32-wifi-manager/WebConfig/code.js
  */
 .data
 .section .rodata.embedded

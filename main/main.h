@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include <iostream>
-//#include <cmath>
+// #include <cmath>
 
 // ESP-IDF includes
 #include "driver/gpio.h"
@@ -19,8 +19,6 @@
 #include <sys/stat.h>
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
-
-
 
 // FreeRTOS includes
 #include "freertos/FreeRTOS.h"
@@ -49,13 +47,15 @@
 #include "esp_firebase/rtdb.h"
 #include "firebase_config.h"
 #include "sntp_sync.h"
+#include "ds3231.h"
 
 #include "lvgl.h"
 #include "lvgl_helpers.h"
 #include "lv_port_indev.h"
 
 // data structure for storing sensor data
-typedef struct dataSensor_st {
+typedef struct dataSensor_st
+{
     // data from SHT31 sensor
     float temperature;
     float humidity;
@@ -68,5 +68,3 @@ typedef struct dataSensor_st {
     // timestamp
     uint32_t timestamp;
 } dataSensor_st;
-
-#define QUEUE_SIZE 10U

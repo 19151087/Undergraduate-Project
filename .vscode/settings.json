@@ -5,7 +5,8 @@
         "sdkconfig.h": "c",
         "sntp_sync.h": "c",
         "stdio.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "gui.h": "c"
     },
     "idf.adapterTargetName": "esp32"
 }

@@ -6,7 +6,7 @@
 # It is included in the main 'build.ninja'.
 
 # =============================================================================
-# Project: Undergraduate-Project
+# Project: GraduateThesis-Project
 # Configurations: 
 # =============================================================================
 # =============================================================================
@@ -14,7 +14,7 @@
 #############################################
 # Rule for compiling C files.
 
-rule C_COMPILER__Undergraduate-Project.2eelf_
+rule C_COMPILER__GraduateThesis-Project.2eelf_
   depfile = $DEP_FILE
   deps = gcc
   command = ccache C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\xtensa-esp32-elf\esp-2021r2-patch5-8.4.0\xtensa-esp32-elf\bin\xtensa-esp32-elf-gcc.exe $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
@@ -24,7 +24,7 @@ rule C_COMPILER__Undergraduate-Project.2eelf_
 #############################################
 # Rule for linking CXX executable.
 
-rule CXX_EXECUTABLE_LINKER__Undergraduate-Project.2eelf_
+rule CXX_EXECUTABLE_LINKER__GraduateThesis-Project.2eelf_
   command = cmd.exe /C "$PRE_LINK && C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\xtensa-esp32-elf\esp-2021r2-patch5-8.4.0\xtensa-esp32-elf\bin\xtensa-esp32-elf-g++.exe $FLAGS $LINK_FLAGS @$RSP_FILE -o $TARGET_FILE  && $POST_BUILD"
   description = Linking CXX executable $TARGET_FILE
   rspfile = $RSP_FILE
@@ -1588,6 +1588,44 @@ rule C_STATIC_LIBRARY_LINKER____idf_button_
 
 
 #############################################
+# Rule for compiling C files.
+
+rule C_COMPILER____idf_i2cdev_
+  depfile = $DEP_FILE
+  deps = gcc
+  command = ccache C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\xtensa-esp32-elf\esp-2021r2-patch5-8.4.0\xtensa-esp32-elf\bin\xtensa-esp32-elf-gcc.exe $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
+  description = Building C object $out
+
+
+#############################################
+# Rule for linking C static library.
+
+rule C_STATIC_LIBRARY_LINKER____idf_i2cdev_
+  command = cmd.exe /C "$PRE_LINK && C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\cmake\3.23.1\bin\cmake.exe -E rm -f $TARGET_FILE && C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\xtensa-esp32-elf\esp-2021r2-patch5-8.4.0\xtensa-esp32-elf\bin\xtensa-esp32-elf-ar.exe qc $TARGET_FILE $LINK_FLAGS $in && C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\xtensa-esp32-elf\esp-2021r2-patch5-8.4.0\xtensa-esp32-elf\bin\xtensa-esp32-elf-ranlib.exe $TARGET_FILE && $POST_BUILD"
+  description = Linking C static library $TARGET_FILE
+  restat = $RESTAT
+
+
+#############################################
+# Rule for compiling C files.
+
+rule C_COMPILER____idf_ds3231_
+  depfile = $DEP_FILE
+  deps = gcc
+  command = ccache C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\xtensa-esp32-elf\esp-2021r2-patch5-8.4.0\xtensa-esp32-elf\bin\xtensa-esp32-elf-gcc.exe $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
+  description = Building C object $out
+
+
+#############################################
+# Rule for linking C static library.
+
+rule C_STATIC_LIBRARY_LINKER____idf_ds3231_
+  command = cmd.exe /C "$PRE_LINK && C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\cmake\3.23.1\bin\cmake.exe -E rm -f $TARGET_FILE && C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\xtensa-esp32-elf\esp-2021r2-patch5-8.4.0\xtensa-esp32-elf\bin\xtensa-esp32-elf-ar.exe qc $TARGET_FILE $LINK_FLAGS $in && C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\xtensa-esp32-elf\esp-2021r2-patch5-8.4.0\xtensa-esp32-elf\bin\xtensa-esp32-elf-ranlib.exe $TARGET_FILE && $POST_BUILD"
+  description = Linking C static library $TARGET_FILE
+  restat = $RESTAT
+
+
+#############################################
 # Rule for compiling ASM files.
 
 rule ASM_COMPILER____idf_esp32-wifi-manager_
@@ -1678,25 +1716,6 @@ rule C_COMPILER____idf_example_
 # Rule for linking C static library.
 
 rule C_STATIC_LIBRARY_LINKER____idf_example_
-  command = cmd.exe /C "$PRE_LINK && C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\cmake\3.23.1\bin\cmake.exe -E rm -f $TARGET_FILE && C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\xtensa-esp32-elf\esp-2021r2-patch5-8.4.0\xtensa-esp32-elf\bin\xtensa-esp32-elf-ar.exe qc $TARGET_FILE $LINK_FLAGS $in && C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\xtensa-esp32-elf\esp-2021r2-patch5-8.4.0\xtensa-esp32-elf\bin\xtensa-esp32-elf-ranlib.exe $TARGET_FILE && $POST_BUILD"
-  description = Linking C static library $TARGET_FILE
-  restat = $RESTAT
-
-
-#############################################
-# Rule for compiling C files.
-
-rule C_COMPILER____idf_i2cdev_
-  depfile = $DEP_FILE
-  deps = gcc
-  command = ccache C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\xtensa-esp32-elf\esp-2021r2-patch5-8.4.0\xtensa-esp32-elf\bin\xtensa-esp32-elf-gcc.exe $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
-  description = Building C object $out
-
-
-#############################################
-# Rule for linking C static library.
-
-rule C_STATIC_LIBRARY_LINKER____idf_i2cdev_
   command = cmd.exe /C "$PRE_LINK && C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\cmake\3.23.1\bin\cmake.exe -E rm -f $TARGET_FILE && C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\xtensa-esp32-elf\esp-2021r2-patch5-8.4.0\xtensa-esp32-elf\bin\xtensa-esp32-elf-ar.exe qc $TARGET_FILE $LINK_FLAGS $in && C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\xtensa-esp32-elf\esp-2021r2-patch5-8.4.0\xtensa-esp32-elf\bin\xtensa-esp32-elf-ranlib.exe $TARGET_FILE && $POST_BUILD"
   description = Linking C static library $TARGET_FILE
   restat = $RESTAT
@@ -1822,7 +1841,7 @@ rule C_STATIC_LIBRARY_LINKER____idf_sht3x_
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\cmake\3.23.1\bin\cmake.exe --regenerate-during-build -SC:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Undergraduate-Project -BC:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Undergraduate-Project\build
+  command = C:\Users\lamqu\Documents\Tri\Laptrinh\Esp\Espressif\tools\cmake\3.23.1\bin\cmake.exe --regenerate-during-build -SC:\Users\lamqu\Documents\Tri\Laptrinh\Esp\GraduateThesis-Project -BC:\Users\lamqu\Documents\Tri\Laptrinh\Esp\GraduateThesis-Project\build
   description = Re-running CMake...
   generator = 1
 

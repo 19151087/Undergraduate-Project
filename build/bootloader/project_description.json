@@ -1,8 +1,8 @@
 {
     "project_name":       "bootloader",
     "project_path":       "C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Espressif/frameworks/esp-idf-v4.4.4/components/bootloader/subproject",
-    "build_dir":          "C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/build/bootloader",
-    "config_file":        "C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/Undergraduate-Project/sdkconfig",
+    "build_dir":          "C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/GraduateThesis-Project/build/bootloader",
+    "config_file":        "C:/Users/lamqu/Documents/Tri/Laptrinh/Esp/GraduateThesis-Project/sdkconfig",
     "config_defaults":    "",
     "app_elf":            "bootloader.elf",
     "app_bin":            "bootloader.bin",
