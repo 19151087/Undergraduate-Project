@@ -1,5 +1,5 @@
 function createTemperatureGauge() {
-    var chart = new Highcharts.Chart({
+    let chart = new Highcharts.Chart({
 
         chart: {
             renderTo: 'gauge-temperature',
@@ -113,7 +113,7 @@ function createTemperatureGauge() {
 }
 
 function createHumidityGauge() {
-    var chart = new Highcharts.Chart({
+    let chart = new Highcharts.Chart({
 
         chart: {
             renderTo: 'gauge-humidity',
@@ -284,7 +284,7 @@ function renderIcons() {
 }
 
 function createPMGauge() {
-    var chart = new Highcharts.Chart({
+    let chart = new Highcharts.Chart({
 
         chart: {
             renderTo: 'gauge-pm',

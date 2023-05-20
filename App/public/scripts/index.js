@@ -5,8 +5,8 @@ function epochToJsDate(epochTime) {
 
 // convert time to human-readable format YYYY/MM/DD HH:MM:SS
 function epochToDateTime(epochTime) {
-  var epochDate = new Date(epochToJsDate(epochTime));
-  var dateTime = epochDate.getFullYear() + "/" +
+  let epochDate = new Date(epochToJsDate(epochTime));
+  let dateTime = epochDate.getFullYear() + "/" +
     ("00" + (epochDate.getMonth() + 1)).slice(-2) + "/" +
     ("00" + epochDate.getDate()).slice(-2) + " " +
     ("00" + epochDate.getHours()).slice(-2) + ":" +
@@ -18,8 +18,8 @@ function epochToDateTime(epochTime) {
 
 // function to plot values on charts
 function plotValues(chart, series_index, timestamp, value) {
-  var x = epochToJsDate(timestamp).getTime();
-  var y = Number(value);
+  let x = epochToJsDate(timestamp).getTime();
+  let y = Number(value);
   if (chart.series[series_index].data.length > 40) {
     chart.series[series_index].addPoint([x, y], true, true, true);
   } else {
@@ -64,23 +64,23 @@ const setupUI = (user) => {
     userDetailsElement.innerHTML = user.email;
 
     // Database paths
-    var dbPath = 'dataSensor/Indoor';
-    var chartPath = 'dataSensor/charts/range';
+    const dbPath = 'dataSensor/Indoor';
+    const chartPath = 'dataSensor/charts/range';
 
     // Database references
-    var dbRef = firebase.database().ref(dbPath);
-    var chartRef = firebase.database().ref(chartPath);
+    let dbRef = firebase.database().ref(dbPath);
+    let chartRef = firebase.database().ref(chartPath);
 
     // CARDS
     // Get the latest readings and display on cards
     dbRef.orderByKey().limitToLast(1).on('child_added', snapshot => {
-      var jsonData = snapshot.toJSON(); // example: {temperature: 25.02, humidity: 50.20, pressure: 1008.48, timestamp:1641317355}
-      var temperature = Math.round(jsonData.Temperature * 100) / 100;
-      var humidity = Math.round(jsonData.Humidity * 100) / 100;
-      var pm2p5 = jsonData.PM2_5;
-      var pm10 = jsonData.PM10;
-      var pm1 = jsonData.PM1_0;
-      var timestamp = jsonData.Timestamp;
+      let jsonData = snapshot.toJSON();
+      let temperature = Math.round(jsonData.Temperature * 100) / 100;
+      let humidity = Math.round(jsonData.Humidity * 100) / 100;
+      let pm2p5 = jsonData.PM2_5;
+      let pm10 = jsonData.PM10;
+      let pm1 = jsonData.PM1_0;
+      let timestamp = jsonData.Timestamp;
       // Update DOM elements
       tempElement.innerHTML = temperature;
       humElement.innerHTML = humidity;
@@ -93,16 +93,16 @@ const setupUI = (user) => {
     // GAUGES
     // Get the latest readings and display on gauges
     dbRef.orderByKey().limitToLast(1).on('child_added', snapshot => {
-      var jsonData = snapshot.toJSON();
-      var temperature = Math.round(jsonData.Temperature * 100) / 100;
-      var humidity = Math.round(jsonData.Humidity * 100) / 100;
-      var pm2p5 = jsonData.PM2_5;
-      var pm10 = jsonData.PM10;
-      var pm1 = jsonData.PM1_0;
+      let jsonData = snapshot.toJSON();
+      let temperature = Math.round(jsonData.Temperature * 100) / 100;
+      let humidity = Math.round(jsonData.Humidity * 100) / 100;
+      let pm2p5 = jsonData.PM2_5;
+      let pm10 = jsonData.PM10;
+      let pm1 = jsonData.PM1_0;
 
-      var gaugeT = createTemperatureGauge();
-      var gaugeH = createHumidityGauge();
-      var guagePM = createPMGauge();
+      let gaugeT = createTemperatureGauge();
+      let gaugeH = createHumidityGauge();
+      let guagePM = createPMGauge();
 
       gaugeT.series[0].points[0].update(temperature);
       gaugeH.series[0].points[0].update(humidity);
@@ -113,7 +113,7 @@ const setupUI = (user) => {
 
     // CHARTS
     // Number of readings to plot on charts
-    var chartRange = 5;
+    let chartRange = 5;
     // Get number of readings to plot saved on database (runs when the page first loads and whenever there's a change in the database)
     chartRef.on('value', snapshot => {
       chartRange = Number(snapshot.val());
@@ -129,14 +129,14 @@ const setupUI = (user) => {
       // Update the charts with the new range
       // Get the latest readings and plot them on charts (the number of plotted readings corresponds to the chartRange value)
       dbRef.orderByKey().limitToLast(chartRange).on('child_added', snapshot => {
-        var jsonData = snapshot.toJSON();
+        let jsonData = snapshot.toJSON();
         /*Save values on variables*/
-        var temperature = jsonData.Temperature;
-        var humidity = jsonData.Humidity;
-        var pm2p5 = jsonData.PM2_5;
-        var pm10 = jsonData.PM10;
-        var pm1 = jsonData.PM1_0;
-        var timestamp = jsonData.Timestamp;
+        let temperature = jsonData.Temperature;
+        let humidity = jsonData.Humidity;
+        let pm2p5 = jsonData.PM2_5;
+        let pm10 = jsonData.PM10;
+        let pm1 = jsonData.PM1_0;
+        let timestamp = jsonData.Timestamp;
         /*Plot the values on the charts*/
         plotValues(chartT, 0, timestamp, temperature);
         plotValues(chartH, 0, timestamp, humidity);
@@ -151,20 +151,20 @@ const setupUI = (user) => {
     };
 
     // TABLE
-    var lastReadingTimestamp; //saves last timestamp displayed on the table
+    let lastReadingTimestamp; //saves last timestamp displayed on the table
     // append all data to the table
-    var firstRun = true;
+    let firstRun = true;
     dbRef.orderByKey().limitToLast(40).on('child_added', function (snapshot) {
       if (snapshot.exists()) {
-        var jsonData = snapshot.toJSON();
+        let jsonData = snapshot.toJSON();
         console.log(jsonData);
-        var temperature = Math.round(jsonData.Temperature * 100) / 100;
-        var humidity = Math.round(jsonData.Humidity * 100) / 100;
-        var pm2p5 = jsonData.PM2_5;
-        var pm10 = jsonData.PM10;
-        var pm1 = jsonData.PM1_0;
-        var timestamp = jsonData.Timestamp;
-        var content = '';
+        let temperature = Math.round(jsonData.Temperature * 100) / 100;
+        let humidity = Math.round(jsonData.Humidity * 100) / 100;
+        let pm2p5 = jsonData.PM2_5;
+        let pm10 = jsonData.PM10;
+        let pm1 = jsonData.PM1_0;
+        let timestamp = jsonData.Timestamp;
+        let content = '';
         content += '<tr>';
         content += '<td>' + epochToDateTime(timestamp) + '</td>';
         content += '<td>' + temperature + '</td>';
@@ -185,33 +185,33 @@ const setupUI = (user) => {
 
     // append readings to table (after pressing More results... button)
     async function appendToTable() {
-      var dataList = []; // saves list of readings returned by the snapshot (oldest-->newest)
-      var reversedList = []; // the same as previous, but reversed (newest--> oldest)
+      let dataList = []; // saves list of readings returned by the snapshot (oldest-->newest)
+      let reversedList = []; // the same as previous, but reversed (newest--> oldest)
       console.log("APEND");
       await dbRef.orderByKey().limitToLast(200).endAt(String(lastReadingTimestamp)).once('value', function (snapshot) {
         // convert the snapshot to JSON
         if (snapshot.exists()) {
           snapshot.forEach(element => {
-            var jsonData = element.toJSON();
+            let jsonData = element.toJSON();
             dataList.push(jsonData); // create a list with all data
           });
           lastReadingTimestamp = dataList[0].timestamp; //oldest timestamp corresponds to the first on the list (oldest --> newest)
           reversedList = dataList.reverse(); // reverse the order of the list (newest data --> oldest data)
 
-          var firstTime = true;
+          let firstTime = true;
           // loop through all elements of the list and append to table (newest elements first)
           reversedList.forEach(element => {
             if (firstTime) { // ignore first reading (it's already on the table from the previous query)
               firstTime = false;
             }
             else {
-              var temperature = Math.round(element.Temperature * 100) / 100;
-              var humidity = Math.round(element.Humidity * 100) / 100;
-              var pm2p5 = element.PM2_5;
-              var pm10 = element.PM10;
-              var pm1 = element.PM1_0;
-              var timestamp = element.Timestamp;
-              var content = '';
+              let temperature = Math.round(element.Temperature * 100) / 100;
+              let humidity = Math.round(element.Humidity * 100) / 100;
+              let pm2p5 = element.PM2_5;
+              let pm10 = element.PM10;
+              let pm1 = element.PM1_0;
+              let timestamp = element.Timestamp;
+              let content = '';
               content += '<tr>';
               content += '<td>' + epochToDateTime(timestamp) + '</td>';
               content += '<td>' + temperature + '</td>';

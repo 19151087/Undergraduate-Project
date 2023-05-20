@@ -6,7 +6,9 @@
         "sntp_sync.h": "c",
         "stdio.h": "c",
         "string.h": "c",
-        "gui.h": "c"
+        "gui.h": "c",
+        "stdbool.h": "c",
+        "xstring": "cpp"
     },
     "idf.adapterTargetName": "esp32"
 }

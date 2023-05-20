@@ -7,107 +7,65 @@
 #include "esp_err.h"
 #include "driver/uart.h"
 #include "driver/gpio.h"
-#include "string.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-#define START_CHARACTER_1   0x42
-#define START_CHARACTER_2   0x4d
-#define PMS7003_DRIVER_BUF_SIZE 1024
+#define START_CHAR1 0x42
+#define START_CHAR2 0x4d
+#define RX_BUFFER_SIZE 128
+#define PMS_DATA_FRAME_SIZE 32
+#define PMS_BUFFER_SIZE 64
 
-#define PMS7003_COMMAND_SIZE    7
+#define PMS_UART_CONFIG_DEFAULT()              \
+    {                                          \
+        .baud_rate = CONFIG_UART_BAUD_RATE,    \
+        .data_bits = UART_DATA_8_BITS,         \
+        .parity = UART_PARITY_DISABLE,         \
+        .stop_bits = UART_STOP_BITS_1,         \
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE, \
+        .source_clk = UART_SCLK_APB,           \
+    }
 
-#define ID_PMS7003  0X02
+    typedef enum
+    {
+        PMS_OK = 0,
+        PMS_ERR_INIT_UART_FAILED,
+        PMS_ERR_READ_DATA_FAILED,
+        PMS_ERR_INVALID_CHECKSUM,
+        PMS_ERR_INVALID_STARTCHAR,
+        PMS_ERR_INVALID_FRAMELENGTH,
+        PMS_ERR_INVALID_VALUE = 0xFF,
+    } pms_err_t;
 
-#define ESP_ERROR_PMS7003_INIT_UART_FAILED          ((ID_PMS7003 << 12)|(0x00))
-#define ESP_ERROR_PMS7003_SET_ACTIVE_MODE_FAILED    ((ID_PMS7003 << 12)|(0x01))
-#define ESP_ERROR_PMS7003_READ_DATA_FAILED          ((ID_PMS7003 << 12)|(0x02))
-#define ESP_ERROR_PMS7003_SET_PASSIVE_MODE_FAILED   ((ID_PMS7003 << 12)|(0x03))
-#define ESP_ERROR_PMS7003_REQUEST_READ_DATA_FAILED  ((ID_PMS7003 << 12)|(0x04))
-#define ESP_ERROR_PMS7003_SET_SLEEP_MODE_FAILED     ((ID_PMS7003 << 12)|(0x05))
-#define ESP_ERROR_PMS7003_WAKEUP_FAILED             ((ID_PMS7003 << 12)|(0x06))
+    static const char PMS7003_COMMAND_WAKEUP[] = {0x42, 0x4D, 0xE4, 0x00, 0x01, 0x01, 0x74};
+    static const char PMS7003_COMMAND_SLEEP[] = {0x42, 0x4D, 0xE4, 0x00, 0x00, 0x01, 0x73};
+    static const char PMS7003_COMMAND_SET_PASSIVE[] = {0x42, 0x4D, 0xE1, 0x00, 0x00, 0x01, 0x70};
+    static const char PMS7003_COMMAND_SET_ACTIVE[] = {0x42, 0x4D, 0xE1, 0x00, 0x01, 0x01, 0x71};
+    static const char PMS7003_COMMAND_REQUEST_READ[] = {0x42, 0x4D, 0xE2, 0x00, 0x00, 0x01, 0x71};
 
-#define UART_CONFIG_DEFAULT()   {   .baud_rate = CONFIG_UART_BAUD_RATE,     \
-                                    .data_bits = UART_DATA_8_BITS,          \
-                                    .parity = UART_PARITY_DISABLE,          \
-                                    .stop_bits = UART_STOP_BITS_1,          \
-                                    .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,  \
-                                    .rx_flow_ctrl_thresh = 122,              \
-                                    .source_clk = UART_SCLK_APB,            \
-}
+    /**
+     * @brief
+     *
+     * @param uart_config
+     * @return esp_err_t
+     */
+    pms_err_t pms_initUart(uart_config_t *uart_config);
 
-static const char PMS7003_COMMAND_WAKEUP[]       =  { 0x42, 0x4D, 0xE4, 0x00, 0x01, 0x01, 0x74 };
-static const char PMS7003_COMMAND_SLEEP[]        =  { 0x42, 0x4D, 0xE4, 0x00, 0x00, 0x01, 0x73 };
-static const char PMS7003_COMMAND_SET_PASSIVE[]  =  { 0x42, 0x4D, 0xE1, 0x00, 0x00, 0x01, 0x70 };
-static const char PMS7003_COMMAND_SET_ACTIVE[]   =  { 0x42, 0x4D, 0xE1, 0x00, 0x01, 0x01, 0x71 };
-static const char PMS7003_COMMAND_REQUEST_READ[] =  { 0x42, 0x4D, 0xE2, 0x00, 0x00, 0x01, 0x71 };
-
-enum PMS_MODE { PMS_MODE_PASSIVE, PMS_MODE_ACTIVE};
-
-/**
- * @brief 
- * 
- * @param uart_config 
- * @return esp_err_t 
- */
-esp_err_t pms7003_initUart(uart_config_t *uart_config);
-
-/**
- * @brief
- * 
- * @return esp_err_t
-*/
-esp_err_t pms7003_checksum(uint8_t *data, uint8_t dataLength);
-
-/**
- * @brief 
- * 
- * @return esp_err_t 
- */
-esp_err_t pms7003_activeMode(void);
-
-/**
- * @brief 
- * 
- * @return esp_err_t 
- */
-esp_err_t pms7003_passiveMode(void);
-
-/**
- * @brief 
- * 
- * @return esp_err_t 
- */
-esp_err_t pms7003_sleepMode(void);
-
-/**
- * @brief 
- * 
- * @return esp_err_t 
- */
-esp_err_t pms7003_wakeUpMode(void);
-
-/**
- * @brief 
- * 
- * @return esp_err_t 
- */
-esp_err_t pms7003_requestReadData(void);
-
-/**
- * @brief 
- * 
- * @param pm1_0 
- * @param pm2_5 
- * @param pm10 
- * @return bool
- */
-bool pms7003_readData(uint16_t *pm1_0, uint16_t *pm2_5, uint16_t *pm10);
+    /**
+     * @brief
+     *
+     * @param pm1_0
+     * @param pm2_5
+     * @param pm10
+     * @return esp_err_t
+     */
+    pms_err_t pms_readData(uint16_t *pm1_0, uint16_t *pm2_5, uint16_t *pm10);
 
 #ifdef __cplusplus
 }
-#endif 
+#endif
 
 #endif // __PMS7003_H__
