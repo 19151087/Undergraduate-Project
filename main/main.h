@@ -68,3 +68,10 @@ typedef struct dataSensor_st
     // timestamp
     uint32_t timestamp;
 } dataSensor_st;
+
+/*Firebase settings variables*/
+typedef struct FBSettings_st
+{
+    bool SDDelete;
+    int8_t LoggingPeriod;
+} FBSettings_st;

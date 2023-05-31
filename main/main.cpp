@@ -7,7 +7,7 @@ static const char TAG[] = "main";
 
 static void lv_tick_task(void *arg);
 static void guiTask(void *pvParameter);
-void screen1(void);
+void LCDScreen(void);
 void act_tabhome(lv_obj_t *parent);
 void act_tab1(lv_obj_t *parent);
 void act_tab2(lv_obj_t *parent);
@@ -49,6 +49,9 @@ static lv_obj_t *hum_meter_tab3;
 lv_meter_indicator_t *temp_indic_tab3;
 lv_meter_indicator_t *hum_indic_tab3;
 
+lv_obj_t *temp_label_tab3;
+lv_obj_t *hum_label_tab3;
+
 static lv_group_t *keypad_group;
 
 lv_indev_t *indev_keypad;
@@ -62,6 +65,34 @@ char str_mac[18];    // string MAC address
 static button_t rst_esp_btn1;
 static button_t btn2;
 static button_t rst_wifi_btn3;
+
+TaskHandle_t getDataFromSensorTask_handle = NULL;
+TaskHandle_t FirebaseTask_handle = NULL;
+TaskHandle_t SDCardTask_handle = NULL;
+TaskHandle_t GUITask_handle = NULL;
+TaskHandle_t getTimeFromRTCTask_handle = NULL;
+
+QueueHandle_t DataToSDCardQueue = NULL;
+QueueHandle_t DataToFirebaseQueue = NULL;
+QueueHandle_t FirebaseToSDCardQueue = NULL;
+QueueHandle_t SDCardToFirebaseQueue = NULL;
+
+SemaphoreHandle_t currentDataMutex = NULL;
+SemaphoreHandle_t FirebaseMutex = NULL;
+SemaphoreHandle_t SDCardMutex = NULL;
+
+// Initialize struct for storing sensor data
+dataSensor_st currentDataSensor;
+
+static sht3x_t sht31_dev;
+static i2c_dev_t ds3231_dev;
+
+// Firebase config and Authentication
+user_account_t account = {USER_EMAIL, USER_PASSWORD};
+FirebaseApp app = FirebaseApp(API_KEY);
+RTDB db = RTDB(&app, DATABASE_URL);
+
+// bool toggleSDbtn2 = false;
 static void button_cb(button_t *btn, button_state_t state)
 {
     if (btn == &rst_esp_btn1 && state == BUTTON_PRESSED_LONG)
@@ -69,9 +100,20 @@ static void button_cb(button_t *btn, button_state_t state)
         ESP_LOGI(TAG, "Restart ESP32");
         esp_restart();
     }
-    // else if (btn == &btn2 && state == BUTTON_PRESSED_LONG)
+    // if (btn == &btn2 && state == BUTTON_PRESSED_LONG)
     // {
-    //     ESP_LOGI(TAG, "Restart ESP32");
+    //     toggleSDbtn2 = !toggleSDbtn2;
+    //     if (toggleSDbtn2)
+    //     {
+    //         sd_status = "Suspended";
+    //         vTaskSuspend(SDCardTask_handle);
+    //     }
+    //     else
+    //     {
+    //         sd_status = "Connected";
+    //         vTaskResume(SDCardTask_handle);
+    //     }
+    //     ESP_LOGI(TAG, "suspend SD card!");
     // }
     if (btn == &rst_wifi_btn3 && state == BUTTON_PRESSED_LONG)
     {
@@ -89,7 +131,7 @@ void init_btn(void)
     rst_esp_btn1.callback = button_cb;
     ESP_ERROR_CHECK(button_init(&rst_esp_btn1));
 
-    // // Button 2
+    // Button 2
     // btn2.gpio = (gpio_num_t)CONFIG_EXAMPLE_BUTTON2_GPIO;
     // btn2.pressed_level = 0;
     // btn2.internal_pull = true;
@@ -105,32 +147,6 @@ void init_btn(void)
     rst_wifi_btn3.callback = button_cb;
     ESP_ERROR_CHECK(button_init(&rst_wifi_btn3));
 }
-
-TaskHandle_t getDataFromSensorTask_handle = NULL;
-TaskHandle_t sendDataToFirebaseTask_handle = NULL;
-TaskHandle_t sendDataToSDCardTask_handle = NULL;
-TaskHandle_t GUITask_handle = NULL;
-TaskHandle_t getTimeFromRTCTask_handle = NULL;
-
-QueueHandle_t sendDataToSDCardQueue = NULL;
-QueueHandle_t sendDataToFirebaseQueue = NULL;
-
-SemaphoreHandle_t currentDataMutex = NULL;
-SemaphoreHandle_t sendDataToFirebaseMutex = NULL;
-SemaphoreHandle_t sendDataToSDCardMutex = NULL;
-
-// Initialize struct for storing sensor data
-dataSensor_st currentDataSensor;
-
-static sht3x_t sht31_dev;
-static i2c_dev_t ds3231_dev;
-
-// Firebase config and Authentication
-user_account_t account = {USER_EMAIL, USER_PASSWORD};
-FirebaseApp app = FirebaseApp(API_KEY);
-RTDB db = RTDB(&app, DATABASE_URL);
-
-uint8_t restart_esp = 0;
 
 static void getDataFromSensor_task(void *pvParameters)
 {
@@ -165,22 +181,28 @@ static void getDataFromSensor_task(void *pvParameters)
         printf("pm1_0 : %d (ug/m3), pm2_5: %d (ug/m3), pm10: %d (ug/m3) \n", currentDataSensor.pm1_0, currentDataSensor.pm2_5, currentDataSensor.pm10);
 
         // Send to message queue
-        if (xQueueSendToBack(sendDataToFirebaseQueue, (void *)&currentDataSensor, pdMS_TO_TICKS(50)) != pdPASS)
+        if (strcmp(firebase_status, "Logged in successfully") == 0)
         {
-            ESP_LOGE(__func__, "Failed to send data to sendDataToFirebaseQueue");
-        }
-        else
-        {
-            ESP_LOGI(__func__, "send data to sendDataToFirebaseQueue successfully");
+            if (xQueueSendToBack(DataToFirebaseQueue, (void *)&currentDataSensor, pdMS_TO_TICKS(50)) != pdPASS)
+            {
+                ESP_LOGE(__func__, "Failed to send data to DataToFirebaseQueue");
+            }
+            else
+            {
+                ESP_LOGI(__func__, "send data to DataToFirebaseQueue successfully");
+            }
         }
 
-        if (xQueueSendToBack(sendDataToSDCardQueue, (void *)&currentDataSensor, pdMS_TO_TICKS(50)) != pdPASS)
+        if (strcmp(sd_status, "Connected") == 0)
         {
-            ESP_LOGE(__func__, "Failed to send data to sendDataToSDCardQueue");
-        }
-        else
-        {
-            ESP_LOGI(__func__, "send data to sendDataToSDCardQueue successfully");
+            if (xQueueSendToBack(DataToSDCardQueue, (void *)&currentDataSensor, pdMS_TO_TICKS(50)) != pdPASS)
+            {
+                ESP_LOGE(__func__, "Failed to send data to DataToSDCardQueue");
+            }
+            else
+            {
+                ESP_LOGI(__func__, "send data to DataToSDCardQueue successfully");
+            }
         }
         // wait until 3 seconds are over
         vTaskDelayUntil(&last_wakeup, (3000 / portTICK_PERIOD_MS));
@@ -190,9 +212,13 @@ static void getDataFromSensor_task(void *pvParameters)
     vTaskDelete(NULL);
 }
 
-static void sendDataToFirebase_task(void *pvParameters)
+static void Firebase_task(void *pvParameters)
 {
+    dataSensor_st ReceivedDataFromQueue;
+    FBSettings_st FBsettings;
+    FBSettings_st ReceivedFeedbackFromSDcard;
     uint32_t prevFBTimeStamp;
+    bool SDEnable = false;
     ds3231_get_timestamp(&ds3231_dev, &prevFBTimeStamp);
     bool connectStatus = false;
     // login to firebase
@@ -205,28 +231,73 @@ static void sendDataToFirebase_task(void *pvParameters)
     {
         connectStatus = false;
     }
-    std::string json_str = R"({"Temperature": 0, "Humidity": 0, "PM1_0": 0, "PM2_5": 0, "PM10": 0, "Timestamp": 0})";
+    std::string JSONDataStr = R"({"Temperature": 0, "Humidity": 0, "PM1_0": 0, "PM2_5": 0, "PM10": 0, "Timestamp": 0})";
 
-    std::string databasePath = "/dataSensor/Indoor";
-    std::string realtimePath = "/dataSensor/realtime";
+    std::string databasePath = "/dataSensor/";
+    databasePath += str_mac;
 
-    // Parse the json_str and access the members and edit them
+    std::string dataLogPath = databasePath + "/dataLog";
+    std::string realtimePath = databasePath + "/realtime/";
+    std::string settingsPath = databasePath + "/settings";
+
+    Json::Value settings;
+    // Parse the JSONDataStr and access the members and edit them
     Json::Value data;
     Json::Reader reader;
-    reader.parse(json_str, data);
+    reader.parse(JSONDataStr, data);
 
-    sendDataToFirebaseMutex = xSemaphoreCreateMutex();
-    dataSensor_st ReceivedDataFromQueue;
+    FirebaseMutex = xSemaphoreCreateMutex();
 
     while (1)
     {
         if (connectStatus == true)
         {
-            if (uxQueueMessagesWaiting(sendDataToFirebaseQueue) != 0)
+            settings = db.getData(settingsPath.c_str());
+            if (xSemaphoreTake(FirebaseMutex, portMAX_DELAY) == pdTRUE)
             {
-                if (xQueueReceive(sendDataToFirebaseQueue, (void *)&ReceivedDataFromQueue, portMAX_DELAY) == pdPASS)
+                SDEnable = settings["SD_enable"].asBool();
+                FBsettings.SDDelete = settings["SD_delete"].asBool();
+                FBsettings.LoggingPeriod = settings["logging_period"].asInt();
+                xSemaphoreGive(FirebaseMutex);
+            }
+            if (SDEnable == false)
+            {
+                sd_status = "Suspended";
+                vTaskSuspend(SDCardTask_handle);
+            }
+            else
+            {
+                sd_status = "Connected";
+                vTaskResume(SDCardTask_handle);
+            }
+            if (SDEnable == true && FBsettings.SDDelete == true)
+            {
+                if (xQueueSendToBack(FirebaseToSDCardQueue, (void *)&FBsettings, pdMS_TO_TICKS(50)) != pdPASS)
                 {
-                    if (xSemaphoreTake(sendDataToFirebaseMutex, portMAX_DELAY) == pdTRUE)
+                    ESP_LOGE(__func__, "Failed to send data to FirebaseToSDCardQueue");
+                }
+                else
+                {
+                    ESP_LOGI(__func__, "send data to FirebaseToSDCardQueue successfully");
+                }
+            }
+            if (uxQueueMessagesWaiting(SDCardToFirebaseQueue) != 0)
+            {
+                if (xQueueReceive(SDCardToFirebaseQueue, (void *)&ReceivedFeedbackFromSDcard, portMAX_DELAY) == pdPASS)
+                {
+                    if (xSemaphoreTake(FirebaseMutex, portMAX_DELAY) == pdTRUE)
+                    {
+                        settings["SD_delete"] = ReceivedFeedbackFromSDcard.SDDelete;
+                        db.patchData(settingsPath.c_str(), settings);
+                        xSemaphoreGive(FirebaseMutex);
+                    }
+                }
+            }
+            if (uxQueueMessagesWaiting(DataToFirebaseQueue) != 0)
+            {
+                if (xQueueReceive(DataToFirebaseQueue, (void *)&ReceivedDataFromQueue, portMAX_DELAY) == pdPASS)
+                {
+                    if (xSemaphoreTake(FirebaseMutex, portMAX_DELAY) == pdTRUE)
                     {
                         // Update the json string
                         data["Temperature"] = ReceivedDataFromQueue.temperature;
@@ -238,53 +309,53 @@ static void sendDataToFirebase_task(void *pvParameters)
                         // Store to realtimePath every 3 seconds
                         db.putData(realtimePath.c_str(), data);
                         // Store to databasePath every 30 seconds by minus timestamp with prevTimeStamp
-                        if (ReceivedDataFromQueue.timestamp - prevFBTimeStamp >= 30)
+                        if (ReceivedDataFromQueue.timestamp - prevFBTimeStamp >= FBsettings.LoggingPeriod)
                         {
                             // Create a new timestamp data and put to firebase
-                            std::string path = databasePath + "/" + std::to_string(ReceivedDataFromQueue.timestamp);
+                            std::string path = dataLogPath + "/" + std::to_string(ReceivedDataFromQueue.timestamp);
                             db.putData(path.c_str(), data);
                             prevFBTimeStamp = ReceivedDataFromQueue.timestamp;
                         }
-                        xSemaphoreGive(sendDataToFirebaseMutex);
+                        xSemaphoreGive(FirebaseMutex);
                     }
                     else
                     {
-                        ESP_LOGE(__func__, "Failed to take sendDataToFirebaseMutex");
+                        ESP_LOGE(__func__, "Failed to take FirebaseMutex");
                     }
                 }
                 else
                 {
-                    ESP_LOGE(__func__, "Failed to receive data from sendDataToFirebaseQueue");
+                    ESP_LOGE(__func__, "Failed to receive data from DataToFirebaseQueue");
                 }
             }
-            else
-            {
-                vTaskDelay(3000 / portTICK_PERIOD_MS); // wait get sensor data task send data to queue
-            }
         }
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 
     // Delete task, can not reach here
     vTaskDelete(NULL);
 }
 
-static void sendDataToSDCard_task(void *pvParameters)
+static void SDCard_task(void *pvParameters)
 {
     dataSensor_st ReceivedDataFromQueue;
-    sendDataToSDCardMutex = xSemaphoreCreateMutex();
+    FBSettings_st SDCardSettings;
+    FBSettings_st ReceivedSettingsFromFirebase;
+    SDCardMutex = xSemaphoreCreateMutex();
     const char *dataFileName = MOUNT_POINT "/data.txt";
     esp_err_t e;
     uint32_t prevSDTimeStamp;
+    SDCardSettings.LoggingPeriod = 30; // default
     ds3231_get_timestamp(&ds3231_dev, &prevSDTimeStamp);
     while (1)
     {
-        if (uxQueueMessagesWaiting(sendDataToSDCardQueue) != 0)
+        if (uxQueueMessagesWaiting(DataToSDCardQueue) != 0)
         {
-            if (xQueueReceive(sendDataToSDCardQueue, (void *)&ReceivedDataFromQueue, portMAX_DELAY) == pdPASS)
+            if (xQueueReceive(DataToSDCardQueue, (void *)&ReceivedDataFromQueue, portMAX_DELAY) == pdPASS)
             {
-                if (xSemaphoreTake(sendDataToSDCardMutex, portMAX_DELAY) == pdTRUE)
+                if (xSemaphoreTake(SDCardMutex, portMAX_DELAY) == pdTRUE)
                 {
-                    if (ReceivedDataFromQueue.timestamp - prevSDTimeStamp >= 30) // Save data to SD card every 30 seconds
+                    if (ReceivedDataFromQueue.timestamp - prevSDTimeStamp >= SDCardSettings.LoggingPeriod)
                     {
                         e = writetoSDcard(dataFileName, "%u,%.2f,%.2f,%d,%d,%d\n", ReceivedDataFromQueue.timestamp,
                                           ReceivedDataFromQueue.temperature,
@@ -293,7 +364,7 @@ static void sendDataToSDCard_task(void *pvParameters)
                                           ReceivedDataFromQueue.pm2_5,
                                           ReceivedDataFromQueue.pm10);
                         prevSDTimeStamp = ReceivedDataFromQueue.timestamp;
-                        xSemaphoreGive(sendDataToSDCardMutex);
+                        xSemaphoreGive(SDCardMutex);
                         if (e != ESP_OK)
                         {
                             ESP_LOGE(__func__, "Failed to write data to SD card");
@@ -305,21 +376,54 @@ static void sendDataToSDCard_task(void *pvParameters)
                     }
                     else
                     {
-                        xSemaphoreGive(sendDataToSDCardMutex);
+                        xSemaphoreGive(SDCardMutex);
                     }
                 }
                 else
                 {
-                    ESP_LOGE(__func__, "Failed to take sendDataToSDCardMutex");
+                    ESP_LOGE(__func__, "Failed to take SDCardMutex");
                 }
             }
             else
             {
-                ESP_LOGE(__func__, "Failed to receive data from sendDataToSDCardQueue");
+                ESP_LOGE(__func__, "Failed to receive data from DataToSDCardQueue");
             }
         }
-
-        vTaskDelay(3000 / portTICK_PERIOD_MS); // wait get sensor data task send data to queue
+        if (uxQueueMessagesWaiting(FirebaseToSDCardQueue) != 0)
+        {
+            if (xQueueReceive(FirebaseToSDCardQueue, (void *)&ReceivedSettingsFromFirebase, portMAX_DELAY) == pdPASS)
+            {
+                if (xSemaphoreTake(SDCardMutex, portMAX_DELAY) == pdTRUE)
+                {
+                    if (ReceivedSettingsFromFirebase.LoggingPeriod != SDCardSettings.LoggingPeriod)
+                    {
+                        SDCardSettings.LoggingPeriod = ReceivedSettingsFromFirebase.LoggingPeriod;
+                    }
+                    if (ReceivedSettingsFromFirebase.SDDelete == true)
+                    {
+                        deleteSDcardData(dataFileName) == ESP_OK ? SDCardSettings.SDDelete = false : SDCardSettings.SDDelete = true;
+                        if (xQueueSendToBack(SDCardToFirebaseQueue, (void *)&SDCardSettings, pdMS_TO_TICKS(50)) != pdPASS)
+                        {
+                            ESP_LOGE(__func__, "Failed to send data to SDCardToFirebaseQueue");
+                        }
+                        else
+                        {
+                            ESP_LOGI(__func__, "send data to SDCardToFirebaseQueue successfully");
+                        }
+                    }
+                    xSemaphoreGive(SDCardMutex);
+                }
+                else
+                {
+                    ESP_LOGE(__func__, "Failed to take SDCardMutex");
+                }
+            }
+            else
+            {
+                ESP_LOGE(__func__, "Failed to receive data from FirebaseToSDcardQueue");
+            }
+        }
+        vTaskDelay(100 / portTICK_PERIOD_MS); // wait get sensor data task send data to queue
     }
 }
 
@@ -367,7 +471,7 @@ void init_sensors(void)
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
     // Create task to get data from sensor
-    xTaskCreate(getDataFromSensor_task, "getDataFromSensor_task", (1024 * 20), NULL, 25, &getDataFromSensorTask_handle);
+    xTaskCreate(getDataFromSensor_task, "getDataFromSensor_task", (1024 * 16), NULL, 25, &getDataFromSensorTask_handle);
 }
 
 void init_sdcard(void)
@@ -382,6 +486,7 @@ void init_sdcard(void)
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to initialize bus.");
+        sd_status = "No connection";
         return;
     }
     // This initializes the slot without card detect (CD) and write protect (WP) signals.
@@ -438,7 +543,7 @@ void init_sdcard(void)
     readfromSDcard(file_name, &data_str); // read the data from the SD card for debugging
     free(data_str);                       // free the memory
 
-    xTaskCreate(sendDataToSDCard_task, "sendDataToSDCard_task", (1024 * 10), NULL, 9, &sendDataToSDCardTask_handle);
+    xTaskCreate(SDCard_task, "SDCard_task", (1024 * 6), NULL, 9, &SDCardTask_handle);
 }
 
 void init_rtc(void)
@@ -457,7 +562,7 @@ void wifi_disconnect_callback(void *pvParameters)
     memset(str_mac, 0, sizeof(str_mac));
     wifi_status = "Disconnected";
     firebase_status = "Disconnected";
-    vTaskDelete(sendDataToFirebaseTask_handle);
+    vTaskDelete(FirebaseTask_handle);
 }
 
 void wifi_connect_ok_callback(void *pvParameter)
@@ -489,18 +594,17 @@ void wifi_connect_ok_callback(void *pvParameter)
     }
 
     /* initialize firebase*/
-    xTaskCreate(sendDataToFirebase_task, "sendDataToFirebase", (1024 * 10), NULL, 10, &sendDataToFirebaseTask_handle);
+    xTaskCreate(Firebase_task, "Firebase", (1024 * 10), NULL, 10, &FirebaseTask_handle);
 }
 
 /*----------------------------------*GUI - TASK*--------------------------------*/
 SemaphoreHandle_t xGuiSemaphore;
 static void guiTask(void *pvParameter)
 {
-
     (void)pvParameter;
     xGuiSemaphore = xSemaphoreCreateMutex();
     lv_init();
-    lvgl_driver_init(); /* Initialize SPI or I2C bus used by the drivers */
+    lvgl_driver_init(); /* Initialize SPI bus used by the drivers */
     /* Initialize buffer*/
     static lv_disp_draw_buf_t disp_buf;
     static lv_color_t buf1[DISP_BUF_SIZE];
@@ -524,7 +628,7 @@ static void guiTask(void *pvParameter)
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
     ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, LV_TICK_PERIOD_MS * 1000));
 
-    screen1();
+    LCDScreen();
 
     while (1)
     {
@@ -546,7 +650,7 @@ static void guiTask(void *pvParameter)
     vTaskDelete(NULL);
 }
 
-void screen1(void)
+void LCDScreen(void)
 {
     lv_port_indev_init();
     keypad_group = lv_group_create();
@@ -581,19 +685,14 @@ void screen1(void)
 void act_tabhome(lv_obj_t *parent)
 {
     wifi_label = lv_label_create(parent);
-    lv_label_set_text_fmt(wifi_label, "WIFI ip address: %s", str_ip);
     lv_obj_align(wifi_label, LV_ALIGN_TOP_LEFT, 0, 0);
     mac_adrr_label = lv_label_create(parent);
-    lv_label_set_text_fmt(mac_adrr_label, "MAC address: %s", str_mac);
     lv_obj_align_to(mac_adrr_label, wifi_label, LV_ALIGN_LEFT_MID, 0, 20);
     wifi_status_label = lv_label_create(parent);
-    lv_label_set_text_fmt(wifi_status_label, "Wifi status: %s", wifi_status);
     lv_obj_align_to(wifi_status_label, mac_adrr_label, LV_ALIGN_LEFT_MID, 0, 20);
     firebase_status_label = lv_label_create(parent);
-    lv_label_set_text_fmt(firebase_status_label, "Firebase status: %s", firebase_status);
     lv_obj_align_to(firebase_status_label, wifi_status_label, LV_ALIGN_LEFT_MID, 0, 20);
     sd_status_label = lv_label_create(parent);
-    lv_label_set_text_fmt(sd_status_label, "SD card status: %s", sd_status);
     lv_obj_align_to(sd_status_label, firebase_status_label, LV_ALIGN_LEFT_MID, 0, 20);
 }
 /*-------------------------------- TAB - 1--------------------------------*/
@@ -631,7 +730,6 @@ void act_tab1(lv_obj_t *parent)
 
     date_label = lv_label_create(time_frame);
     lv_obj_align(date_label, LV_ALIGN_CENTER, 0, 0);
-    lv_label_set_text_fmt(date_label, "%s", CurrentTime);
 
     static lv_style_t txt_style;
     lv_style_init(&txt_style);
@@ -651,12 +749,10 @@ void act_tab1(lv_obj_t *parent)
     lv_obj_set_size(temp_bar_tab1, 20, 100);
     lv_obj_align(temp_bar_tab1, LV_ALIGN_LEFT_MID, 0, 15);
     lv_bar_set_range(temp_bar_tab1, -20, 40);
-    lv_bar_set_value(temp_bar_tab1, currentDataSensor.temperature, LV_ANIM_ON);
 
     temp_label_tab1 = lv_label_create(temp_frame);
     lv_obj_add_style(temp_label_tab1, &txt_style, 0);
     lv_obj_align(temp_label_tab1, LV_ALIGN_RIGHT_MID, 0, -15);
-    lv_label_set_text_fmt(temp_label_tab1, " %.2f °C", currentDataSensor.temperature);
 
     /* Humidity*/
     hum_gauge_tab1 = lv_arc_create(hum_frame);
@@ -665,27 +761,18 @@ void act_tab1(lv_obj_t *parent)
     lv_arc_set_rotation(hum_gauge_tab1, 180);
     lv_arc_set_bg_angles(hum_gauge_tab1, 0, 180);
     lv_obj_align(hum_gauge_tab1, LV_ALIGN_CENTER, 0, 30);
-    lv_arc_set_value(hum_gauge_tab1, currentDataSensor.humidity);
 
     hum_label_tab1 = lv_label_create(hum_frame);
     lv_obj_add_style(hum_label_tab1, &txt_style, 0);
     lv_obj_align_to(hum_label_tab1, hum_gauge_tab1, LV_ALIGN_CENTER, -15, 0);
-    lv_label_set_text_fmt(hum_label_tab1, " %.2f %%", currentDataSensor.humidity);
 
+    /* Dust*/
     pm2p5_label_tab1 = lv_label_create(pm_frame);
-    lv_obj_align(pm2p5_label_tab1, LV_ALIGN_LEFT_MID, 0, -15);
-    lv_label_set_recolor(pm2p5_label_tab1, true);
-    lv_label_set_text_fmt(pm2p5_label_tab1, "#FE3301 PM2.5: %d \tug/m3#", currentDataSensor.pm2_5);
-
-    pm10_label_tab1 = lv_label_create(pm_frame);
-    lv_obj_align(pm10_label_tab1, LV_ALIGN_LEFT_MID, 0, 0);
-    lv_label_set_recolor(pm10_label_tab1, true);
-    lv_label_set_text_fmt(pm10_label_tab1, "#01FE01 PM10: %d \tug/m3#", currentDataSensor.pm10);
-
-    pm1_label_tab1 = lv_label_create(pm_frame);
-    lv_obj_align(pm1_label_tab1, LV_ALIGN_LEFT_MID, 0, 15);
-    lv_label_set_recolor(pm1_label_tab1, true);
-    lv_label_set_text_fmt(pm1_label_tab1, "#0180FE PM1: %d \t\tug/m3#", currentDataSensor.pm1_0);
+    static lv_style_t pm2p5_style;
+    lv_style_init(&pm2p5_style);
+    lv_style_set_text_font(&pm2p5_style, &lv_font_montserrat_46);
+    lv_obj_add_style(pm2p5_label_tab1, &pm2p5_style, 0);
+    lv_obj_align(pm2p5_label_tab1, LV_ALIGN_CENTER, -24, 6);
 
     /* Title*/
     lv_obj_t *temp_title_tab1 = lv_label_create(temp_frame);
@@ -696,9 +783,10 @@ void act_tab1(lv_obj_t *parent)
     lv_obj_align(hum_title_tab1, LV_ALIGN_TOP_MID, 0, -10);
     lv_label_set_text(hum_title_tab1, "HUMIDITY");
 
-    // lv_obj_t * pm_title_tab1 = lv_label_create(pm_frame);
-    // lv_obj_align(pm_title_tab1, LV_ALIGN_TOP_MID, 0, 0);
-    // lv_label_set_text(pm_title_tab1, "PARTICLE MATTER");
+    lv_obj_t *pm2p5_title_tab1 = lv_label_create(pm_frame);
+    lv_obj_align(pm2p5_title_tab1, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
+    lv_label_set_text(pm2p5_title_tab1, "PM2.5\n"
+                                        "ug/m3");
 }
 /*-------------------------------- TAB - 2--------------------------------*/
 void act_tab2(lv_obj_t *parent)
@@ -708,30 +796,31 @@ void act_tab2(lv_obj_t *parent)
     lv_style_init(&indic2_style);
     lv_style_init(&indic3_style);
 
-    lv_style_set_text_font(&indic1_style, &lv_font_montserrat_14);
-    lv_style_set_text_font(&indic2_style, &lv_font_montserrat_14);
-    lv_style_set_text_font(&indic3_style, &lv_font_montserrat_14);
+    lv_style_set_text_font(&indic1_style, &lv_font_montserrat_20);
+    lv_style_set_text_font(&indic2_style, &lv_font_montserrat_20);
+    lv_style_set_text_font(&indic3_style, &lv_font_montserrat_20);
+
+    lv_obj_t *pm_label_title = lv_label_create(parent);
+    lv_label_set_text(pm_label_title, "PARTICLE MATTER (ug/m3)");
+    lv_obj_align(pm_label_title, LV_ALIGN_TOP_MID, 0, 0);
 
     pm2p5_label_tab2 = lv_label_create(parent);
     lv_obj_add_style(pm2p5_label_tab2, &indic1_style, 0);
-    lv_obj_align(pm2p5_label_tab2, LV_ALIGN_RIGHT_MID, 0, -30);
+    lv_obj_align(pm2p5_label_tab2, LV_ALIGN_LEFT_MID, 196, -30);
     lv_style_set_text_color(&indic1_style, lv_palette_main(LV_PALETTE_RED));
-    lv_label_set_text_fmt(pm2p5_label_tab2, "PM2.5: %d \tug/m3", currentDataSensor.pm2_5);
 
     pm10_label_tab2 = lv_label_create(parent);
     lv_obj_add_style(pm10_label_tab2, &indic2_style, 0);
-    lv_obj_align(pm10_label_tab2, LV_ALIGN_RIGHT_MID, 0, 0);
+    lv_obj_align(pm10_label_tab2, LV_ALIGN_LEFT_MID, 196, 0);
     lv_style_set_text_color(&indic2_style, lv_palette_main(LV_PALETTE_GREEN));
-    lv_label_set_text_fmt(pm10_label_tab2, "PM10: %d \tug/m3", currentDataSensor.pm10);
 
     pm1_label_tab2 = lv_label_create(parent);
     lv_obj_add_style(pm1_label_tab2, &indic3_style, 0);
-    lv_obj_align(pm1_label_tab2, LV_ALIGN_RIGHT_MID, 0, 30);
+    lv_obj_align(pm1_label_tab2, LV_ALIGN_LEFT_MID, 196, 30);
     lv_style_set_text_color(&indic3_style, lv_palette_main(LV_PALETTE_BLUE));
-    lv_label_set_text_fmt(pm1_label_tab2, "PM1: %d \tug/m3", currentDataSensor.pm1_0);
 
     pm_meter_tab2 = lv_meter_create(parent);
-    lv_obj_align(pm_meter_tab2, LV_ALIGN_CENTER, -70, -5);
+    lv_obj_align(pm_meter_tab2, LV_ALIGN_LEFT_MID, 0, 10);
     lv_obj_set_size(pm_meter_tab2, 160, 160);
 
     /*Remove the circle from the middle*/
@@ -739,41 +828,52 @@ void act_tab2(lv_obj_t *parent)
 
     /*Add a scale first*/
     lv_meter_scale_t *scale = lv_meter_add_scale(pm_meter_tab2);
-    lv_meter_set_scale_ticks(pm_meter_tab2, scale, 2, 2, 10, lv_palette_main(LV_PALETTE_GREY));
-    lv_meter_set_scale_major_ticks(pm_meter_tab2, scale, 1, 2, 30, lv_color_hex3(0xeee), 15);
-    lv_meter_set_scale_range(pm_meter_tab2, scale, 0, 50, 270, 90);
+    lv_meter_set_scale_ticks(pm_meter_tab2, scale, 21, 2, 12, lv_palette_main(LV_PALETTE_GREY));
+    lv_meter_set_scale_major_ticks(pm_meter_tab2, scale, 4, 2, 30, lv_color_hex3(0xeee), 10);
+    lv_meter_set_scale_range(pm_meter_tab2, scale, 0, 115, 240, 150);
 
     /*Add a three arc indicator*/
     indic_pm2p5_tab2 = lv_meter_add_arc(pm_meter_tab2, scale, 10, lv_palette_main(LV_PALETTE_RED), 0);
     indic_pm10_tab2 = lv_meter_add_arc(pm_meter_tab2, scale, 10, lv_palette_main(LV_PALETTE_GREEN), -10);
     indic_pm1_tab2 = lv_meter_add_arc(pm_meter_tab2, scale, 10, lv_palette_main(LV_PALETTE_BLUE), -20);
-
-    lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm2p5_tab2, currentDataSensor.pm2_5);
-    lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm10_tab2, currentDataSensor.pm10);
-    lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm1_tab2, currentDataSensor.pm1_0);
 }
 /*-------------------------------- TAB - 3--------------------------------*/
 void act_tab3(lv_obj_t *parent)
 {
+    lv_obj_t *pm_label_title = lv_label_create(parent);
+    lv_label_set_text(pm_label_title, "TEMPERATURE & HUMIDITY");
+    lv_obj_align(pm_label_title, LV_ALIGN_TOP_MID, 0, 0);
+
+    /*Add a meter for temperature*/
     temp_meter_tab3 = lv_meter_create(parent);
-    lv_obj_align(temp_meter_tab3, LV_ALIGN_LEFT_MID, 0, 0);
+    lv_obj_align(temp_meter_tab3, LV_ALIGN_LEFT_MID, 0, 12);
     lv_obj_set_size(temp_meter_tab3, 150, 150);
 
-    /*Add a scale first*/
     lv_meter_scale_t *temp_scale_tab3 = lv_meter_add_scale(temp_meter_tab3);
-    lv_meter_set_scale_ticks(temp_meter_tab3, temp_scale_tab3, 6, 2, 10, lv_palette_main(LV_PALETTE_GREY));
-    lv_meter_set_scale_major_ticks(temp_meter_tab3, temp_scale_tab3, 6, 4, 15, lv_color_black(), 10);
+    lv_meter_set_scale_ticks(temp_meter_tab3, temp_scale_tab3, 21, 2, 10, lv_palette_main(LV_PALETTE_GREY));
+    lv_meter_set_scale_major_ticks(temp_meter_tab3, temp_scale_tab3, 5, 4, 15, lv_color_black(), 10);
 
-    /*Add a blue arc to the start*/
+    /*Add a light blue arc to the start*/
     temp_indic_tab3 = lv_meter_add_arc(temp_meter_tab3, temp_scale_tab3, 3, lv_palette_main(LV_PALETTE_BLUE), 0);
     lv_meter_set_indicator_start_value(temp_meter_tab3, temp_indic_tab3, 0);
-    lv_meter_set_indicator_end_value(temp_meter_tab3, temp_indic_tab3, 10);
+    lv_meter_set_indicator_end_value(temp_meter_tab3, temp_indic_tab3, 15);
 
-    /*Make the tick lines blue at the start of the scale*/
+    /*Make the tick lines light blue at the start of the scale*/
     temp_indic_tab3 = lv_meter_add_scale_lines(temp_meter_tab3, temp_scale_tab3, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_BLUE),
                                                false, 0);
     lv_meter_set_indicator_start_value(temp_meter_tab3, temp_indic_tab3, 0);
-    lv_meter_set_indicator_end_value(temp_meter_tab3, temp_indic_tab3, 10);
+    lv_meter_set_indicator_end_value(temp_meter_tab3, temp_indic_tab3, 15);
+
+    /*Add a green arc in the midddle*/
+    temp_indic_tab3 = lv_meter_add_arc(temp_meter_tab3, temp_scale_tab3, 3, lv_palette_main(LV_PALETTE_GREEN), 0);
+    lv_meter_set_indicator_start_value(temp_meter_tab3, temp_indic_tab3, 15);
+    lv_meter_set_indicator_end_value(temp_meter_tab3, temp_indic_tab3, 30);
+
+    /*Make the tick lines blue at the middle of the scale*/
+    temp_indic_tab3 = lv_meter_add_scale_lines(temp_meter_tab3, temp_scale_tab3, lv_palette_main(LV_PALETTE_GREEN), lv_palette_main(LV_PALETTE_GREEN), false,
+                                               0);
+    lv_meter_set_indicator_start_value(temp_meter_tab3, temp_indic_tab3, 15);
+    lv_meter_set_indicator_end_value(temp_meter_tab3, temp_indic_tab3, 30);
 
     /*Add a red arc to the end*/
     temp_indic_tab3 = lv_meter_add_arc(temp_meter_tab3, temp_scale_tab3, 3, lv_palette_main(LV_PALETTE_RED), 0);
@@ -789,25 +889,39 @@ void act_tab3(lv_obj_t *parent)
     /*Add a needle line indicator*/
     temp_indic_tab3 = lv_meter_add_needle_line(temp_meter_tab3, temp_scale_tab3, 2, lv_palette_main(LV_PALETTE_GREY), -10);
 
+    /*Set temperature scale range*/
+    lv_meter_set_scale_range(temp_meter_tab3, temp_scale_tab3, 0, 40, 240, 150);
+
     hum_meter_tab3 = lv_meter_create(parent);
-    lv_obj_align(hum_meter_tab3, LV_ALIGN_RIGHT_MID, 0, 0);
+    lv_obj_align(hum_meter_tab3, LV_ALIGN_RIGHT_MID, 0, 12);
     lv_obj_set_size(hum_meter_tab3, 150, 150);
 
     /*Add a scale first*/
     lv_meter_scale_t *hum_scale_tab3 = lv_meter_add_scale(hum_meter_tab3);
-    lv_meter_set_scale_ticks(hum_meter_tab3, hum_scale_tab3, 6, 2, 10, lv_palette_main(LV_PALETTE_GREY));
-    lv_meter_set_scale_major_ticks(hum_meter_tab3, hum_scale_tab3, 6, 4, 15, lv_color_black(), 10);
+    lv_meter_set_scale_ticks(hum_meter_tab3, hum_scale_tab3, 21, 2, 10, lv_palette_main(LV_PALETTE_GREY));
+    lv_meter_set_scale_major_ticks(hum_meter_tab3, hum_scale_tab3, 5, 4, 15, lv_color_black(), 10);
 
     /*Add a blue arc to the start*/
     hum_indic_tab3 = lv_meter_add_arc(hum_meter_tab3, hum_scale_tab3, 3, lv_palette_main(LV_PALETTE_BLUE), 0);
     lv_meter_set_indicator_start_value(hum_meter_tab3, hum_indic_tab3, 0);
-    lv_meter_set_indicator_end_value(hum_meter_tab3, hum_indic_tab3, 20);
+    lv_meter_set_indicator_end_value(hum_meter_tab3, hum_indic_tab3, 40);
 
     /*Make the tick lines blue at the start of the scale*/
     hum_indic_tab3 = lv_meter_add_scale_lines(hum_meter_tab3, hum_scale_tab3, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_BLUE),
                                               false, 0);
     lv_meter_set_indicator_start_value(hum_meter_tab3, hum_indic_tab3, 0);
-    lv_meter_set_indicator_end_value(hum_meter_tab3, hum_indic_tab3, 20);
+    lv_meter_set_indicator_end_value(hum_meter_tab3, hum_indic_tab3, 40);
+
+    /*Add a green arc in the midddle*/
+    hum_indic_tab3 = lv_meter_add_arc(hum_meter_tab3, hum_scale_tab3, 3, lv_palette_main(LV_PALETTE_GREEN), 0);
+    lv_meter_set_indicator_start_value(hum_meter_tab3, hum_indic_tab3, 40);
+    lv_meter_set_indicator_end_value(hum_meter_tab3, hum_indic_tab3, 80);
+
+    /*Make the tick lines green at the start of the scale*/
+    hum_indic_tab3 = lv_meter_add_scale_lines(hum_meter_tab3, hum_scale_tab3, lv_palette_main(LV_PALETTE_GREEN), lv_palette_main(LV_PALETTE_GREEN),
+                                              false, 0);
+    lv_meter_set_indicator_start_value(hum_meter_tab3, hum_indic_tab3, 40);
+    lv_meter_set_indicator_end_value(hum_meter_tab3, hum_indic_tab3, 80);
 
     /*Add a red arc to the end*/
     hum_indic_tab3 = lv_meter_add_arc(hum_meter_tab3, hum_scale_tab3, 3, lv_palette_main(LV_PALETTE_RED), 0);
@@ -822,6 +936,23 @@ void act_tab3(lv_obj_t *parent)
 
     /*Add a needle line indicator*/
     hum_indic_tab3 = lv_meter_add_needle_line(hum_meter_tab3, hum_scale_tab3, 2, lv_palette_main(LV_PALETTE_GREY), -10);
+
+    /*Set humidity scale range*/
+    lv_meter_set_scale_range(hum_meter_tab3, hum_scale_tab3, 0, 100, 240, 150);
+
+    static lv_style_t style_label_tab3;
+    lv_style_init(&style_label_tab3);
+    lv_style_set_text_font(&style_label_tab3, &lv_font_montserrat_20);
+
+    /*label for temperature value*/
+    temp_label_tab3 = lv_label_create(parent);
+    lv_obj_add_style(temp_label_tab3, &style_label_tab3, 0);
+    lv_obj_align(temp_label_tab3, LV_ALIGN_BOTTOM_MID, -70, -24);
+
+    /*label for temperature value*/
+    hum_label_tab3 = lv_label_create(parent);
+    lv_obj_add_style(hum_label_tab3, &style_label_tab3, 0);
+    lv_obj_align(hum_label_tab3, LV_ALIGN_BOTTOM_MID, 70, -24);
 }
 
 void update_param(void)
@@ -844,14 +975,12 @@ void update_param(void)
     sprintf(hum_update, "%.2f %%", currentDataSensor.humidity);
     lv_label_set_text(hum_label_tab1, hum_update);
 
-    lv_label_set_text_fmt(pm2p5_label_tab1, "#FE3301 PM2.5: %d \tug/m3#", currentDataSensor.pm2_5);
-    lv_label_set_text_fmt(pm10_label_tab1, "#01FE01 PM10: %d \tug/m3#", currentDataSensor.pm10);
-    lv_label_set_text_fmt(pm1_label_tab1, "#0180FE PM1: %d \tug/m3#", currentDataSensor.pm1_0);
+    lv_label_set_text_fmt(pm2p5_label_tab1, "%d", currentDataSensor.pm2_5);
 
     /* tab 2*/
-    lv_label_set_text_fmt(pm2p5_label_tab2, "PM2.5: %d \tug/m3", currentDataSensor.pm2_5);
-    lv_label_set_text_fmt(pm10_label_tab2, "PM10: %d \tug/m3", currentDataSensor.pm10);
-    lv_label_set_text_fmt(pm1_label_tab2, "PM1: %d \tug/m3", currentDataSensor.pm1_0);
+    lv_label_set_text_fmt(pm2p5_label_tab2, "PM2.5: %d", currentDataSensor.pm2_5);
+    lv_label_set_text_fmt(pm10_label_tab2, "PM10: %d", currentDataSensor.pm10);
+    lv_label_set_text_fmt(pm1_label_tab2, "PM1: %d", currentDataSensor.pm1_0);
 
     lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm2p5_tab2, currentDataSensor.pm2_5);
     lv_meter_set_indicator_end_value(pm_meter_tab2, indic_pm10_tab2, currentDataSensor.pm10);
@@ -859,7 +988,10 @@ void update_param(void)
 
     /* tab 3*/
     lv_meter_set_indicator_value(temp_meter_tab3, temp_indic_tab3, currentDataSensor.temperature);
+    lv_label_set_text(temp_label_tab3, temp_update);
+
     lv_meter_set_indicator_value(hum_meter_tab3, hum_indic_tab3, currentDataSensor.humidity);
+    lv_label_set_text(hum_label_tab3, hum_update);
 }
 
 static void lv_tick_task(void *arg)
@@ -894,8 +1026,10 @@ extern "C" void app_main(void)
     init_rtc();
 
     // Create data send queue
-    sendDataToSDCardQueue = xQueueCreate(10, sizeof(struct dataSensor_st));
-    sendDataToFirebaseQueue = xQueueCreate(10, sizeof(struct dataSensor_st));
+    DataToSDCardQueue = xQueueCreate(10, sizeof(struct dataSensor_st));
+    DataToFirebaseQueue = xQueueCreate(10, sizeof(struct dataSensor_st));
+    FirebaseToSDCardQueue = xQueueCreate(2, sizeof(struct FBSettings_st));
+    SDCardToFirebaseQueue = xQueueCreate(2, sizeof(struct FBSettings_st));
 
     /* initialize sdcard */
     init_sdcard();
