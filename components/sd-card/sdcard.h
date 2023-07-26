@@ -85,6 +85,11 @@ extern "C"
      * @brief Delete file.
      *
      * @param[in] namefile Name file.
+     *
+     * @return esp_err_t
+     *
+     * @retval  - ESP_OK on success.
+     * @retval  - ESP_FAIL on fail.
      */
     esp_err_t deleteSDcardData(const char *namefile);
 

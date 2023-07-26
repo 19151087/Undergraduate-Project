@@ -2,119 +2,14 @@
 
 static const char TAG[] = "main";
 
-/*--------------------------LVGL-------------------------------*/
-#define LV_TICK_PERIOD_MS 1
-
-static void lv_tick_task(void *arg);
-static void guiTask(void *pvParameter);
-void LCDScreen(void);
-void act_tabhome(lv_obj_t *parent);
-void act_tab1(lv_obj_t *parent);
-void act_tab2(lv_obj_t *parent);
-void act_tab3(lv_obj_t *parent);
-void update_param(void);
-
-char CurrentTime[20];
-lv_obj_t *wifi_label;
-lv_obj_t *mac_adrr_label;
-lv_obj_t *wifi_status_label;
-lv_obj_t *sd_status_label;
-lv_obj_t *firebase_status_label;
-const char *wifi_status = "Connecting...";
-const char *sd_status = "Connecting...";
-const char *firebase_status = "Connecting...";
-/*--------------------------Indicate variable in tab 1-------------------------------*/
-lv_obj_t *temp_bar_tab1;
-lv_obj_t *temp_label_tab1;
-
-lv_obj_t *hum_gauge_tab1;
-lv_obj_t *hum_label_tab1;
-
-lv_obj_t *pm2p5_label_tab1;
-lv_obj_t *pm10_label_tab1;
-lv_obj_t *pm1_label_tab1;
-
-lv_obj_t *date_label;
-/*--------------------------Indicate variable in tab 2-------------------------------*/
-lv_obj_t *pm2p5_label_tab2;
-lv_obj_t *pm10_label_tab2;
-lv_obj_t *pm1_label_tab2;
-static lv_obj_t *pm_meter_tab2;
-lv_meter_indicator_t *indic_pm2p5_tab2;
-lv_meter_indicator_t *indic_pm10_tab2;
-lv_meter_indicator_t *indic_pm1_tab2;
-/*--------------------------Indicate variable in tab 3-------------------------------*/
-static lv_obj_t *temp_meter_tab3;
-static lv_obj_t *hum_meter_tab3;
-lv_meter_indicator_t *temp_indic_tab3;
-lv_meter_indicator_t *hum_indic_tab3;
-
-lv_obj_t *temp_label_tab3;
-lv_obj_t *hum_label_tab3;
-
-static lv_group_t *keypad_group;
-
-lv_indev_t *indev_keypad;
-
-/*--------------------------MAIN-------------------------------*/
-using namespace ESPFirebase;
-char str_ip[16];     // IP address
-uint8_t mac_adrr[6]; // MAC address
-char str_mac[18];    // string MAC address
-
-static button_t rst_esp_btn1;
-static button_t btn2;
-static button_t rst_wifi_btn3;
-
-TaskHandle_t getDataFromSensorTask_handle = NULL;
-TaskHandle_t FirebaseTask_handle = NULL;
-TaskHandle_t SDCardTask_handle = NULL;
-TaskHandle_t GUITask_handle = NULL;
-TaskHandle_t getTimeFromRTCTask_handle = NULL;
-
-QueueHandle_t DataToSDCardQueue = NULL;
-QueueHandle_t DataToFirebaseQueue = NULL;
-QueueHandle_t FirebaseToSDCardQueue = NULL;
-QueueHandle_t SDCardToFirebaseQueue = NULL;
-
-SemaphoreHandle_t currentDataMutex = NULL;
-SemaphoreHandle_t FirebaseMutex = NULL;
-SemaphoreHandle_t SDCardMutex = NULL;
-
-// Initialize struct for storing sensor data
-dataSensor_st currentDataSensor;
-
-static sht3x_t sht31_dev;
-static i2c_dev_t ds3231_dev;
-
-// Firebase config and Authentication
-user_account_t account = {USER_EMAIL, USER_PASSWORD};
-FirebaseApp app = FirebaseApp(API_KEY);
-RTDB db = RTDB(&app, DATABASE_URL);
-
 // bool toggleSDbtn2 = false;
 static void button_cb(button_t *btn, button_state_t state)
 {
     if (btn == &rst_esp_btn1 && state == BUTTON_PRESSED_LONG)
     {
-        ESP_LOGI(TAG, "Restart ESP32");
+        // ESP_LOGI(TAG, "Restart ESP32");
         esp_restart();
     }
-    // if (btn == &btn2 && state == BUTTON_PRESSED_LONG)
-    // {
-    //     toggleSDbtn2 = !toggleSDbtn2;
-    //     if (toggleSDbtn2)
-    //     {
-    //         sd_status = "Suspended";
-    //         vTaskSuspend(SDCardTask_handle);
-    //     }
-    //     else
-    //     {
-    //         sd_status = "Connected";
-    //         vTaskResume(SDCardTask_handle);
-    //     }
-    //     ESP_LOGI(TAG, "suspend SD card!");
-    // }
     if (btn == &rst_wifi_btn3 && state == BUTTON_PRESSED_LONG)
     {
         wifi_manager_disconnect_async();
@@ -125,30 +20,28 @@ void init_btn(void)
 {
     // Button 1
     rst_esp_btn1.gpio = (gpio_num_t)CONFIG_EXAMPLE_BUTTON1_GPIO;
-    rst_esp_btn1.pressed_level = 0;
+    rst_esp_btn1.pressed_level = 1;
     rst_esp_btn1.internal_pull = true;
-    rst_esp_btn1.autorepeat = false;
     rst_esp_btn1.callback = button_cb;
-    ESP_ERROR_CHECK(button_init(&rst_esp_btn1));
 
     // Button 2
     // btn2.gpio = (gpio_num_t)CONFIG_EXAMPLE_BUTTON2_GPIO;
-    // btn2.pressed_level = 0;
+    // btn2.pressed_level = 1;
     // btn2.internal_pull = true;
-    // btn2.autorepeat = false;
     // btn2.callback = button_cb;
-    // ESP_ERROR_CHECK(button_init(&btn2));
 
     // Button 3
     rst_wifi_btn3.gpio = (gpio_num_t)CONFIG_EXAMPLE_BUTTON3_GPIO;
-    rst_wifi_btn3.pressed_level = 0;
+    rst_wifi_btn3.pressed_level = 1;
     rst_wifi_btn3.internal_pull = true;
-    rst_wifi_btn3.autorepeat = false;
     rst_wifi_btn3.callback = button_cb;
+
+    ESP_ERROR_CHECK(button_init(&rst_esp_btn1));
+    // ESP_ERROR_CHECK(button_init(&btn2));
     ESP_ERROR_CHECK(button_init(&rst_wifi_btn3));
 }
 
-static void getDataFromSensor_task(void *pvParameters)
+static void CollectData_task(void *pvParameters)
 {
     TickType_t last_wakeup = xTaskGetTickCount();
     currentDataMutex = xSemaphoreCreateMutex();
@@ -165,12 +58,11 @@ static void getDataFromSensor_task(void *pvParameters)
                 currentDataSensor.pm2_5 = pm2_5Temp;
                 currentDataSensor.pm10 = pm10Temp;
             }
-            else
-            {
-                ESP_LOGE(__func__, "Read data from PMS7003 failed \n");
-            }
+            // else
+            // {
+            //     ESP_LOGE(__func__, "Read data from PMS7003 failed \n");
+            // }
             ESP_ERROR_CHECK(sht3x_measure(&sht31_dev, &(currentDataSensor.temperature), &(currentDataSensor.humidity)));
-            // currentDataSensor.timestamp = sntp_getTime(); // get timestamp
             ESP_ERROR_CHECK(ds3231_get_timestamp(&ds3231_dev, &(currentDataSensor.timestamp)));
             xSemaphoreGive(currentDataMutex); // release mutex
         }
@@ -181,16 +73,16 @@ static void getDataFromSensor_task(void *pvParameters)
         printf("pm1_0 : %d (ug/m3), pm2_5: %d (ug/m3), pm10: %d (ug/m3) \n", currentDataSensor.pm1_0, currentDataSensor.pm2_5, currentDataSensor.pm10);
 
         // Send to message queue
-        if (strcmp(firebase_status, "Logged in successfully") == 0)
+        if (strcmp(firebase_status, "Logged in") == 0)
         {
             if (xQueueSendToBack(DataToFirebaseQueue, (void *)&currentDataSensor, pdMS_TO_TICKS(50)) != pdPASS)
             {
                 ESP_LOGE(__func__, "Failed to send data to DataToFirebaseQueue");
             }
-            else
-            {
-                ESP_LOGI(__func__, "send data to DataToFirebaseQueue successfully");
-            }
+            // else
+            // {
+            //     ESP_LOGI(__func__, "send data to DataToFirebaseQueue successfully");
+            // }
         }
 
         if (strcmp(sd_status, "Connected") == 0)
@@ -199,10 +91,10 @@ static void getDataFromSensor_task(void *pvParameters)
             {
                 ESP_LOGE(__func__, "Failed to send data to DataToSDCardQueue");
             }
-            else
-            {
-                ESP_LOGI(__func__, "send data to DataToSDCardQueue successfully");
-            }
+            // else
+            // {
+            //     ESP_LOGI(__func__, "send data to DataToSDCardQueue successfully");
+            // }
         }
         // wait until 3 seconds are over
         vTaskDelayUntil(&last_wakeup, (3000 / portTICK_PERIOD_MS));
@@ -219,19 +111,18 @@ static void Firebase_task(void *pvParameters)
     FBSettings_st ReceivedFeedbackFromSDcard;
     uint32_t prevFBTimeStamp;
     bool SDEnable = false;
+    bool FirebaseLoginStatus = false;
     ds3231_get_timestamp(&ds3231_dev, &prevFBTimeStamp);
-    bool connectStatus = false;
     // login to firebase
     if (app.loginUserAccount(account) == ESP_OK)
     {
-        connectStatus = true;
-        firebase_status = "Logged in successfully";
+        FirebaseLoginStatus = true;
+        strcpy(firebase_status, "Logged in");
     }
     else
     {
-        connectStatus = false;
+        FirebaseLoginStatus = false;
     }
-    std::string JSONDataStr = R"({"Temperature": 0, "Humidity": 0, "PM1_0": 0, "PM2_5": 0, "PM10": 0, "Timestamp": 0})";
 
     std::string databasePath = "/dataSensor/";
     databasePath += str_mac;
@@ -241,16 +132,16 @@ static void Firebase_task(void *pvParameters)
     std::string settingsPath = databasePath + "/settings";
 
     Json::Value settings;
+    settings["wifi_ssid"] = wifi_ssid;
+    db.patchData(settingsPath.c_str(), settings);
     // Parse the JSONDataStr and access the members and edit them
     Json::Value data;
-    Json::Reader reader;
-    reader.parse(JSONDataStr, data);
 
     FirebaseMutex = xSemaphoreCreateMutex();
 
     while (1)
     {
-        if (connectStatus == true)
+        if ((FirebaseLoginStatus == true) && (strcmp(firebase_status, "Logged in") == 0))
         {
             settings = db.getData(settingsPath.c_str());
             if (xSemaphoreTake(FirebaseMutex, portMAX_DELAY) == pdTRUE)
@@ -262,24 +153,24 @@ static void Firebase_task(void *pvParameters)
             }
             if (SDEnable == false)
             {
-                sd_status = "Suspended";
+                strcpy(sd_status, "Suspended");
                 vTaskSuspend(SDCardTask_handle);
             }
             else
             {
-                sd_status = "Connected";
+                strcpy(sd_status, "Connected");
                 vTaskResume(SDCardTask_handle);
             }
-            if (SDEnable == true && FBsettings.SDDelete == true)
+            if (SDEnable == true)
             {
                 if (xQueueSendToBack(FirebaseToSDCardQueue, (void *)&FBsettings, pdMS_TO_TICKS(50)) != pdPASS)
                 {
                     ESP_LOGE(__func__, "Failed to send data to FirebaseToSDCardQueue");
                 }
-                else
-                {
-                    ESP_LOGI(__func__, "send data to FirebaseToSDCardQueue successfully");
-                }
+                // else
+                // {
+                //     ESP_LOGI(__func__, "send data to FirebaseToSDCardQueue successfully");
+                // }
             }
             if (uxQueueMessagesWaiting(SDCardToFirebaseQueue) != 0)
             {
@@ -307,26 +198,26 @@ static void Firebase_task(void *pvParameters)
                         data["PM10"] = ReceivedDataFromQueue.pm10;
                         data["Timestamp"] = ReceivedDataFromQueue.timestamp;
                         // Store to realtimePath every 3 seconds
-                        db.putData(realtimePath.c_str(), data);
+                        db.patchData(realtimePath.c_str(), data);
                         // Store to databasePath every 30 seconds by minus timestamp with prevTimeStamp
                         if (ReceivedDataFromQueue.timestamp - prevFBTimeStamp >= FBsettings.LoggingPeriod)
                         {
                             // Create a new timestamp data and put to firebase
                             std::string path = dataLogPath + "/" + std::to_string(ReceivedDataFromQueue.timestamp);
-                            db.putData(path.c_str(), data);
+                            db.patchData(path.c_str(), data);
                             prevFBTimeStamp = ReceivedDataFromQueue.timestamp;
                         }
                         xSemaphoreGive(FirebaseMutex);
                     }
-                    else
-                    {
-                        ESP_LOGE(__func__, "Failed to take FirebaseMutex");
-                    }
+                    // else
+                    // {
+                    //     ESP_LOGE(__func__, "Failed to take FirebaseMutex");
+                    // }
                 }
-                else
-                {
-                    ESP_LOGE(__func__, "Failed to receive data from DataToFirebaseQueue");
-                }
+                // else
+                // {
+                //     ESP_LOGE(__func__, "Failed to receive data from DataToFirebaseQueue");
+                // }
             }
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -369,25 +260,25 @@ static void SDCard_task(void *pvParameters)
                         {
                             ESP_LOGE(__func__, "Failed to write data to SD card");
                         }
-                        else
-                        {
-                            ESP_LOGI(__func__, "Write data to SD card successfully");
-                        }
+                        // else
+                        // {
+                        //     ESP_LOGI(__func__, "Write data to SD card successfully");
+                        // }
                     }
                     else
                     {
                         xSemaphoreGive(SDCardMutex);
                     }
                 }
-                else
-                {
-                    ESP_LOGE(__func__, "Failed to take SDCardMutex");
-                }
+                // else
+                // {
+                //     ESP_LOGE(__func__, "Failed to take SDCardMutex");
+                // }
             }
-            else
-            {
-                ESP_LOGE(__func__, "Failed to receive data from DataToSDCardQueue");
-            }
+            // else
+            // {
+            //     ESP_LOGE(__func__, "Failed to receive data from DataToSDCardQueue");
+            // }
         }
         if (uxQueueMessagesWaiting(FirebaseToSDCardQueue) != 0)
         {
@@ -406,28 +297,28 @@ static void SDCard_task(void *pvParameters)
                         {
                             ESP_LOGE(__func__, "Failed to send data to SDCardToFirebaseQueue");
                         }
-                        else
-                        {
-                            ESP_LOGI(__func__, "send data to SDCardToFirebaseQueue successfully");
-                        }
+                        // else
+                        // {
+                        //     ESP_LOGI(__func__, "send data to SDCardToFirebaseQueue successfully");
+                        // }
                     }
                     xSemaphoreGive(SDCardMutex);
                 }
-                else
-                {
-                    ESP_LOGE(__func__, "Failed to take SDCardMutex");
-                }
+                // else
+                // {
+                //     ESP_LOGE(__func__, "Failed to take SDCardMutex");
+                // }
             }
-            else
-            {
-                ESP_LOGE(__func__, "Failed to receive data from FirebaseToSDcardQueue");
-            }
+            // else
+            // {
+            //     ESP_LOGE(__func__, "Failed to receive data from FirebaseToSDcardQueue");
+            // }
         }
         vTaskDelay(100 / portTICK_PERIOD_MS); // wait get sensor data task send data to queue
     }
 }
 
-static void getTimeFromRTC_task(void *pvParameters)
+static void getDateTimeFromRTC_task(void *pvParameters)
 {
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while (1)
@@ -471,7 +362,7 @@ void init_sensors(void)
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
     // Create task to get data from sensor
-    xTaskCreate(getDataFromSensor_task, "getDataFromSensor_task", (1024 * 16), NULL, 25, &getDataFromSensorTask_handle);
+    xTaskCreate(CollectData_task, "CollectData_task", (1024 * 16), NULL, 6, &CollectDataTask_handle);
 }
 
 void init_sdcard(void)
@@ -481,12 +372,12 @@ void init_sdcard(void)
     sdmmc_card_t *sdcard;
     sdmmc_host_t host = SDSPI_HOST_VSPI();
     spi_bus_config_t bus_cfg = SPI_BUS_CONFIG_DEFAULT();
-    ESP_LOGI(TAG, "Initializing SD card using SPI peripheral");
+    // ESP_LOGI(TAG, "Initializing SD card using SPI peripheral");
     ret = spi_bus_initialize((spi_host_device_t)host.slot, &bus_cfg, SPI_DMA_CH2);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Failed to initialize bus.");
-        sd_status = "No connection";
+        // ESP_LOGE(TAG, "Failed to initialize bus.");
+        strcpy(sd_status, "No connection");
         return;
     }
     // This initializes the slot without card detect (CD) and write protect (WP) signals.
@@ -494,7 +385,7 @@ void init_sdcard(void)
     sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
     slot_config.gpio_cs = (gpio_num_t)CONFIG_SD_PIN_CS;
     slot_config.host_id = (spi_host_device_t)host.slot;
-    ESP_LOGI(TAG, "Mounting filesystem");
+    // ESP_LOGI(TAG, "Mounting filesystem");
     ret = esp_vfs_fat_sdspi_mount(mount_point, &host, &slot_config, &mount_config, &sdcard);
     if (ret != ESP_OK)
     {
@@ -503,17 +394,17 @@ void init_sdcard(void)
             ESP_LOGE(TAG, "Failed to mount filesystem. "
                           "If you want the card to be formatted, set the CONFIG_EXAMPLE_FORMAT_IF_MOUNT_FAILED menuconfig option.");
         }
-        else
-        {
-            ESP_LOGE(TAG, "Failed to initialize the card (%s). "
-                          "Make sure SD card lines have pull-up resistors in place.",
-                     esp_err_to_name(ret));
-        }
-        sd_status = "No connection";
+        // else
+        // {
+        //     ESP_LOGE(TAG, "Failed to initialize the card (%s). "
+        //                   "Make sure SD card lines have pull-up resistors in place.",
+        //              esp_err_to_name(ret));
+        // }
+        strcpy(sd_status, "No connection");
         return;
     }
-    ESP_LOGI(TAG, "Filesystem mounted");
-    sd_status = "Connected";
+    // ESP_LOGI(TAG, "Filesystem mounted");
+    strcpy(sd_status, "Connected");
 
     // Card has been initialized, print its properties
     sdmmc_card_print_info(stdout, sdcard);
@@ -524,58 +415,62 @@ void init_sdcard(void)
     struct stat st;
     if (stat(file_name, &st) != 0)
     {
-        ESP_LOGI(TAG, "Opening file %s ...", file_name);
+        // ESP_LOGI(TAG, "Opening file %s ...", file_name);
         FILE *f = fopen(file_name, "w");
         if (f == NULL)
         {
-            ESP_LOGE(TAG, "Failed to open file for writing");
+            // ESP_LOGE(TAG, "Failed to open file for writing");
             return;
         }
         fprintf(f, "Timestamp, Temperature, Humidity, PM2.5, PM1, PM10 \n");
         fclose(f);
-        ESP_LOGI(TAG, "File written");
+        // ESP_LOGI(TAG, "File written");
     }
-    else
-    {
-        ESP_LOGI(TAG, "File already exists");
-    }
+    // else
+    // {
+    //     ESP_LOGI(TAG, "File already exists");
+    // }
     char *data_str;
     readfromSDcard(file_name, &data_str); // read the data from the SD card for debugging
     free(data_str);                       // free the memory
 
-    xTaskCreate(SDCard_task, "SDCard_task", (1024 * 6), NULL, 9, &SDCardTask_handle);
+    xTaskCreate(SDCard_task, "SDCard_task", (1024 * 6), NULL, 2, &SDCardTask_handle);
 }
 
 void init_rtc(void)
 {
     /* initialize rtc */
     memset(&ds3231_dev, 0, sizeof(i2c_dev_t));
-    ESP_ERROR_CHECK(ds3231_init_desc(&ds3231_dev, 0, (gpio_num_t)CONFIG_SHT31_I2C_MASTER_SDA, (gpio_num_t)CONFIG_SHT31_I2C_MASTER_SCL));
-    xTaskCreate(getTimeFromRTC_task, "getTimeFromRTC_task", configMINIMAL_STACK_SIZE * 4, NULL, 11, &getTimeFromRTCTask_handle);
+    ESP_ERROR_CHECK(ds3231_init_desc(&ds3231_dev, 0, CONFIG_DS3231_I2C_ADDR, (gpio_num_t)CONFIG_SHT31_I2C_MASTER_SDA, (gpio_num_t)CONFIG_SHT31_I2C_MASTER_SCL));
+    xTaskCreate(getDateTimeFromRTC_task, "getDateTimeFromRTC_task", (configMINIMAL_STACK_SIZE * 4), NULL, 3, &getDateTimeFromRTCTask_handle);
 }
 
 /*----------------------------------*WIFI - CONNECTION*--------------------------------*/
 /* wifi callback */
+bool toggleFirebase = true;
 void wifi_disconnect_callback(void *pvParameters)
 {
     memset(str_ip, 0, sizeof(str_ip));
-    memset(str_mac, 0, sizeof(str_mac));
-    wifi_status = "Disconnected";
-    firebase_status = "Disconnected";
+    strcpy(wifi_ssid, "Starting AP mode...");
+    strcpy(firebase_status, "Disconnected");
+    strcpy(sd_status, "Connected");
+    vTaskResume(SDCardTask_handle);
+
+    toggleFirebase = !toggleFirebase;
     vTaskDelete(FirebaseTask_handle);
 }
 
 void wifi_connect_ok_callback(void *pvParameter)
 {
+    /* Get wifi SSID */
+    wificonfig = wifi_manager_config_sta;
+    strcpy(wifi_ssid, (char *)wificonfig->sta.ssid);
     ip_event_got_ip_t *param = (ip_event_got_ip_t *)pvParameter;
-    /* transform IP to human readable string */
+
+    /* Get IP and MAC addresses */
     esp_ip4addr_ntoa(&param->ip_info.ip, str_ip, IP4ADDR_STRLEN_MAX);
-    esp_read_mac(mac_adrr, ESP_MAC_WIFI_STA);
-    sprintf(str_mac, "%02x:%02x:%02x:%02x:%02x:%02x", mac_adrr[0], mac_adrr[1], mac_adrr[2], mac_adrr[3], mac_adrr[4], mac_adrr[5]);
-    ESP_LOGI(__func__, "I have a connection and my IP is %s!", str_ip);
-    ESP_LOGI(__func__, "My MAC is %s!", str_mac);
-    wifi_status = "Connected";
-    wifi_manager_set_callback(WM_EVENT_STA_DISCONNECTED, &wifi_disconnect_callback);
+    // ESP_LOGI(__func__, "I have a connection and my IP is %s!", str_ip);
+    // ESP_LOGI(__func__, "My MAC is %s!", str_mac);
     /* initialize ntp*/
     Set_SystemTime_SNTP();
     // update 'now' variable with current time
@@ -586,7 +481,7 @@ void wifi_connect_ok_callback(void *pvParameter)
     // now = now + (7 * 60 * 60); // GMT +7
     localtime_r(&now, &timeinfo);
     strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-    ESP_LOGI(__func__, "The current date/time in Viet Nam is: %s", strftime_buf);
+    // ESP_LOGI(__func__, "The current date/time is: %s", strftime_buf);
 
     if (ds3231_set_time(&ds3231_dev, &timeinfo) != ESP_OK)
     {
@@ -594,7 +489,11 @@ void wifi_connect_ok_callback(void *pvParameter)
     }
 
     /* initialize firebase*/
-    xTaskCreate(Firebase_task, "Firebase", (1024 * 10), NULL, 10, &FirebaseTask_handle);
+    xTaskCreate(Firebase_task, "Firebase", (1024 * 10), NULL, 4, &FirebaseTask_handle);
+    if(toggleFirebase) // check first time connect
+    {
+        wifi_manager_set_callback(WM_EVENT_STA_DISCONNECTED, &wifi_disconnect_callback);
+    }
 }
 
 /*----------------------------------*GUI - TASK*--------------------------------*/
@@ -684,14 +583,14 @@ void LCDScreen(void)
 /*-------------------------------- TAB - HOME--------------------------------*/
 void act_tabhome(lv_obj_t *parent)
 {
-    wifi_label = lv_label_create(parent);
-    lv_obj_align(wifi_label, LV_ALIGN_TOP_LEFT, 0, 0);
     mac_adrr_label = lv_label_create(parent);
-    lv_obj_align_to(mac_adrr_label, wifi_label, LV_ALIGN_LEFT_MID, 0, 20);
-    wifi_status_label = lv_label_create(parent);
-    lv_obj_align_to(wifi_status_label, mac_adrr_label, LV_ALIGN_LEFT_MID, 0, 20);
+    lv_obj_align(mac_adrr_label, LV_ALIGN_TOP_LEFT, 0, 0);
+    wifi_ip_label = lv_label_create(parent);
+    lv_obj_align_to(wifi_ip_label, mac_adrr_label, LV_ALIGN_LEFT_MID, 0, 20);
+    wifi_ssid_label = lv_label_create(parent);
+    lv_obj_align_to(wifi_ssid_label, wifi_ip_label, LV_ALIGN_LEFT_MID, 0, 20);
     firebase_status_label = lv_label_create(parent);
-    lv_obj_align_to(firebase_status_label, wifi_status_label, LV_ALIGN_LEFT_MID, 0, 20);
+    lv_obj_align_to(firebase_status_label, wifi_ssid_label, LV_ALIGN_LEFT_MID, 0, 20);
     sd_status_label = lv_label_create(parent);
     lv_obj_align_to(sd_status_label, firebase_status_label, LV_ALIGN_LEFT_MID, 0, 20);
 }
@@ -801,7 +700,7 @@ void act_tab2(lv_obj_t *parent)
     lv_style_set_text_font(&indic3_style, &lv_font_montserrat_20);
 
     lv_obj_t *pm_label_title = lv_label_create(parent);
-    lv_label_set_text(pm_label_title, "PARTICLE MATTER (ug/m3)");
+    lv_label_set_text(pm_label_title, "PARTICULATE MATTERS (ug/m3)");
     lv_obj_align(pm_label_title, LV_ALIGN_TOP_MID, 0, 0);
 
     pm2p5_label_tab2 = lv_label_create(parent);
@@ -957,9 +856,9 @@ void act_tab3(lv_obj_t *parent)
 
 void update_param(void)
 {
-    lv_label_set_text_fmt(wifi_label, "WIFI ip address: %s", str_ip);
+    lv_label_set_text_fmt(wifi_ip_label, "IP address: %s", str_ip);
     lv_label_set_text_fmt(mac_adrr_label, "MAC address: %s", str_mac);
-    lv_label_set_text_fmt(wifi_status_label, "Wifi status: %s", wifi_status);
+    lv_label_set_text_fmt(wifi_ssid_label, "Wi-Fi SSID: %s", wifi_ssid);
     lv_label_set_text_fmt(firebase_status_label, "Firebase status: %s", firebase_status);
     lv_label_set_text_fmt(sd_status_label, "SD card status: %s", sd_status);
     /* tab 1*/
@@ -1004,33 +903,36 @@ extern "C" void app_main(void)
 {
     // Allow other core to finish initialization
     vTaskDelay(pdMS_TO_TICKS(200));
-    ESP_LOGI("ESP_info", "Minimum free heap size: %d bytes\r\n", esp_get_minimum_free_heap_size());
+    // ESP_LOGI("ESP_info", "Minimum free heap size: %d bytes\r\n", esp_get_minimum_free_heap_size());
     // Booting firmware
-    ESP_LOGI(__func__, "Booting....");
+    // ESP_LOGI(__func__, "Booting....");
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
     init_btn(); // press for 2 seconds to reset wifi config and reset esp32
 
     /* start wifi manager*/
     wifi_manager_start();
+    strcpy(wifi_ssid, "Starting AP mode...");
     /* register a callback when connection is success*/
     wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &wifi_connect_ok_callback);
 
     /* initialize lvgl */
-    xTaskCreatePinnedToCore(guiTask, "gui", (1024 * 4), NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(guiTask, "gui", (1024 * 4), NULL, 1, NULL, 1);
 
-    ESP_ERROR_CHECK(i2cdev_init());
-    /* initialize sensor */
-    init_sensors();
-    /* initialize rtc */
-    init_rtc();
-
+    /* get MAC address*/
+    esp_read_mac(mac_adrr, ESP_MAC_WIFI_STA);
+    sprintf(str_mac, "%02x:%02x:%02x:%02x:%02x:%02x", mac_adrr[0], mac_adrr[1], mac_adrr[2], mac_adrr[3], mac_adrr[4], mac_adrr[5]);
     // Create data send queue
     DataToSDCardQueue = xQueueCreate(10, sizeof(struct dataSensor_st));
     DataToFirebaseQueue = xQueueCreate(10, sizeof(struct dataSensor_st));
     FirebaseToSDCardQueue = xQueueCreate(2, sizeof(struct FBSettings_st));
     SDCardToFirebaseQueue = xQueueCreate(2, sizeof(struct FBSettings_st));
 
+    ESP_ERROR_CHECK(i2cdev_init());
+    /* initialize sensor */
+    init_sensors();
+    /* initialize rtc */
+    init_rtc();
     /* initialize sdcard */
     init_sdcard();
 }

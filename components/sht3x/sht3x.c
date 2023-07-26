@@ -257,10 +257,10 @@ esp_err_t sht3x_compute_values(sht3x_raw_data_t raw_data, float *temperature, fl
     CHECK_ARG(raw_data && (temperature || humidity));
 
     if (temperature)
-        *temperature = ((((raw_data[0] * 256.0) + raw_data[1]) * 175) / 65535.0) - 45;
+        *temperature = ((((raw_data[0] * 256.0) + raw_data[1]) * 175) / 65535.0) - 45 - 2.5;
 
     if (humidity)
-        *humidity = ((((raw_data[3] * 256.0) + raw_data[4]) * 100) / 65535.0);
+        *humidity = ((((raw_data[3] * 256.0) + raw_data[4]) * 100) / 65535.0) + 2;
 
     return ESP_OK;
 }

@@ -105,11 +105,12 @@ extern "C"
      *
      * @param dev I2C device descriptor
      * @param port I2C port
+     * @param addr Device address
      * @param sda_gpio SDA GPIO
      * @param scl_gpio SCL GPIO
      * @return ESP_OK to indicate success
      */
-    esp_err_t ds3231_init_desc(i2c_dev_t *dev, i2c_port_t port, gpio_num_t sda_gpio, gpio_num_t scl_gpio);
+    esp_err_t ds3231_init_desc(i2c_dev_t *dev, i2c_port_t port, uint8_t addr, gpio_num_t sda_gpio, gpio_num_t scl_gpio);
 
     /**
      * @brief Free device descriptor

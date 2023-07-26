@@ -26,7 +26,7 @@
  *
  * ESP-IDF driver for simple GPIO buttons.
  *
- * Supports anti-jitter, autorepeat, long press.
+ * Supports anti-jitter, long press.
  *
  * Copyright (c) 2021 Ruslan V. Uss <unclerus@gmail.com>
  *
@@ -38,8 +38,6 @@
 #define DEAD_TIME_US 50000 // 50ms
 
 #define POLL_TIMEOUT_US        (CONFIG_BUTTON_POLL_TIMEOUT * 1000)
-#define AUTOREPEAT_TIMEOUT_US  (CONFIG_BUTTON_AUTOREPEAT_TIMEOUT * 1000)
-#define AUTOREPEAT_INTERVAL_US (CONFIG_BUTTON_AUTOREPEAT_INTERVAL * 1000)
 #define LONG_PRESS_TIMEOUT_US  (CONFIG_BUTTON_LONG_PRESS_TIMEOUT * 1000)
 
 static button_t *buttons[CONFIG_BUTTON_MAX] = { NULL };
@@ -65,30 +63,11 @@ static void poll_button(button_t *btn)
             // pressing just started, reset pressing/repeating time and run callback
             btn->internal.state = BUTTON_PRESSED;
             btn->internal.pressed_time = 0;
-            btn->internal.repeating_time = 0;
             btn->callback(btn, BUTTON_PRESSED);
             return;
         }
         // increment pressing time
         btn->internal.pressed_time += POLL_TIMEOUT_US;
-
-        // check autorepeat
-        if (btn->autorepeat)
-        {
-            // check autorepeat timeout
-            if (btn->internal.pressed_time < AUTOREPEAT_TIMEOUT_US)
-                return;
-            // increment repeating time
-            btn->internal.repeating_time += POLL_TIMEOUT_US;
-
-            if (btn->internal.repeating_time >= AUTOREPEAT_INTERVAL_US)
-            {
-                // reset repeating time and run callback
-                btn->internal.repeating_time = 0;
-                btn->callback(btn, BUTTON_CLICKED);
-            }
-            return;
-        }
 
         if (btn->internal.state == BUTTON_PRESSED && btn->internal.pressed_time >= LONG_PRESS_TIMEOUT_US)
         {
@@ -144,7 +123,6 @@ esp_err_t button_init(button_t *btn)
         {
             btn->internal.state = BUTTON_RELEASED;
             btn->internal.pressed_time = 0;
-            btn->internal.repeating_time = 0;
             res = gpio_set_direction(btn->gpio, GPIO_MODE_INPUT);
             if (res != ESP_OK) break;
             if (btn->internal_pull)

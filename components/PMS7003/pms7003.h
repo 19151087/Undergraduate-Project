@@ -17,7 +17,7 @@ extern "C"
 #define START_CHAR2 0x4d
 #define RX_BUFFER_SIZE 128
 #define PMS_DATA_FRAME_SIZE 32
-#define PMS_BUFFER_SIZE 64
+#define PMS_BUFFER_SIZE 40
 
 #define PMS_UART_CONFIG_DEFAULT()              \
     {                                          \

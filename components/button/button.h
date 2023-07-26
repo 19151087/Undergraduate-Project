@@ -43,65 +43,66 @@
 #include <esp_err.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-/**
- * Typedef of button descriptor
- */
-typedef struct button_s button_t;
+    /**
+     * Typedef of button descriptor
+     */
+    typedef struct button_s button_t;
 
-/**
- * Button states/events
- */
-typedef enum {
-    BUTTON_PRESSED = 0,
-    BUTTON_RELEASED,
-    BUTTON_CLICKED,
-    BUTTON_PRESSED_LONG,
-} button_state_t;
+    /**
+     * Button states/events
+     */
+    typedef enum
+    {
+        BUTTON_PRESSED = 0,
+        BUTTON_RELEASED,
+        BUTTON_CLICKED,
+        BUTTON_PRESSED_LONG,
+    } button_state_t;
 
-/**
- * Callback prototype
- *
- * @param btn    Pointer to button descriptor
- * @param state  Button action (new state)
- */
-typedef void (*button_event_cb_t)(button_t *btn, button_state_t state);
+    /**
+     * Callback prototype
+     *
+     * @param btn    Pointer to button descriptor
+     * @param state  Button action (new state)
+     */
+    typedef void (*button_event_cb_t)(button_t *btn, button_state_t state);
 
-/**
- * Button descriptor struct
- */
-struct button_s
-{
-    gpio_num_t gpio;                //!< GPIO
-    bool internal_pull;             //!< Enable internal pull-up/pull-down
-    uint8_t pressed_level;          //!< Logic level of pressed button
-    bool autorepeat;                //!< Enable autorepeat
-    button_event_cb_t callback;     //!< Button callback
-    void *ctx;                      //!< User data
-    struct {
-        button_state_t state;
-        uint32_t pressed_time;
-        uint32_t repeating_time;
-    } internal;                     //!< Internal button state
-};
+    /**
+     * Button descriptor struct
+     */
+    struct button_s
+    {
+        gpio_num_t gpio;            //!< GPIO
+        bool internal_pull;         //!< Enable internal pull-up/pull-down
+        uint8_t pressed_level;      //!< Logic level of pressed button
+        button_event_cb_t callback; //!< Button callback
+        void *ctx;                  //!< User data
+        struct
+        {
+            button_state_t state;
+            uint32_t pressed_time;
+        } internal; //!< Internal button state
+    };
 
-/**
- * @brief Init button
- *
- * @param btn Pointer to button descriptor
- * @return `ESP_OK` on success
- */
-esp_err_t button_init(button_t *btn);
+    /**
+     * @brief Init button
+     *
+     * @param btn Pointer to button descriptor
+     * @return `ESP_OK` on success
+     */
+    esp_err_t button_init(button_t *btn);
 
-/**
- * @brief Deinit button
- *
- * @param btn Pointer to button descriptor
- * @return `ESP_OK` on success
- */
-esp_err_t button_done(button_t *btn);
+    /**
+     * @brief Deinit button
+     *
+     * @param btn Pointer to button descriptor
+     * @return `ESP_OK` on success
+     */
+    esp_err_t button_done(button_t *btn);
 
 #ifdef __cplusplus
 }

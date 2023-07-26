@@ -7,10 +7,10 @@ __attribute__((unused)) static const char *TAG = "SDcard";
 esp_err_t writetoSDcard(const char *namefile, const char *format, ...)
 {
     FILE *file = fopen(namefile, "a+"); // open or create file for appending
-    ESP_LOGI(__func__, "Opening file %s ...", namefile);
+    // ESP_LOGI(__func__, "Opening file %s ...", namefile);
     if (file == NULL)
     {
-        ESP_LOGE(__func__, "Error opening file %s.", namefile);
+        // ESP_LOGE(__func__, "Error opening file %s.", namefile);
         return ESP_FAIL;
     }
 
@@ -22,30 +22,30 @@ esp_err_t writetoSDcard(const char *namefile, const char *format, ...)
     va_end(args_copy);                                  // end the copy list
     if (length < 0)
     {
-        ESP_LOGE(__func__, "Failed to create string data for writing.");
+        // ESP_LOGE(__func__, "Failed to create string data for writing.");
         va_end(args);
         return ESP_FAIL;
     }
     data_str = (char *)malloc(length + 1); // allocate memory for the string
     if (data_str == NULL)
     {
-        ESP_LOGE(__func__, "Failed to create string data for writing.");
+        // ESP_LOGE(__func__, "Failed to create string data for writing.");
         va_end(args);
         return ESP_FAIL;
     }
 
-    vsnprintf(data_str, length + 1, format, args); // create the string
-    ESP_LOGI(__func__, "Success to create string data(%d) for writing.", length);
-    ESP_LOGI(__func__, "Writing data to file %s...", namefile);
-    ESP_LOGI(__func__, "%s;\n", data_str);
+    vsnprintf(data_str, length + 1, format, args); // create the string, length + 1 (NULL terminator)
+    // ESP_LOGI(__func__, "Success to create string data(%d) for writing.", length);
+    // ESP_LOGI(__func__, "Writing data to file %s...", namefile);
+    // ESP_LOGI(__func__, "%s;\n", data_str);
 
     int write_result = vfprintf(file, format, args); // write to file
     if (write_result < 0)
     {
-        ESP_LOGE(__func__, "Failed to write data to file %s.", namefile);
+        // ESP_LOGE(__func__, "Failed to write data to file %s.", namefile);
         return ESP_FAIL;
     }
-    ESP_LOGI(__func__, "Success to write data (%d bytes) to file %s.", write_result, namefile);
+    // ESP_LOGI(__func__, "Success to write data (%d bytes) to file %s.", write_result, namefile);
     va_end(args);   // end the list
     fclose(file);   // close file
     free(data_str); // free the memory
@@ -55,11 +55,11 @@ esp_err_t writetoSDcard(const char *namefile, const char *format, ...)
 esp_err_t readfromSDcard(const char *namefile, char **data_str)
 {
     FILE *file = fopen(namefile, "r"); // open file for reading
-    ESP_LOGI(__func__, "Opening file %s ...", namefile);
+    // ESP_LOGI(__func__, "Opening file %s ...", namefile);
 
     if (file == NULL)
     {
-        ESP_LOGE(__func__, "Error opening file %s.", namefile);
+        // ESP_LOGE(__func__, "Error opening file %s.", namefile);
         return ESP_FAIL; // return an error code
     }
 
@@ -69,7 +69,7 @@ esp_err_t readfromSDcard(const char *namefile, char **data_str)
 
     if (length < 0)
     {
-        ESP_LOGE(__func__, "Error getting the length of the file %s.", namefile);
+        // ESP_LOGE(__func__, "Error getting the length of the file %s.", namefile);
         return ESP_FAIL; // return an error code
     }
 
@@ -77,7 +77,7 @@ esp_err_t readfromSDcard(const char *namefile, char **data_str)
 
     if (*data_str == NULL)
     {
-        ESP_LOGE(__func__, "Error allocating memory for string data for reading.");
+        // ESP_LOGE(__func__, "Error allocating memory for string data for reading.");
         return ESP_FAIL; // return an error code
     }
 
@@ -86,12 +86,12 @@ esp_err_t readfromSDcard(const char *namefile, char **data_str)
 
     if (read_result != length)
     {
-        ESP_LOGE(__func__, "Error reading data from file %s.", namefile);
+        // ESP_LOGE(__func__, "Error reading data from file %s.", namefile);
         return ESP_FAIL; // return an error code
     }
 
-    ESP_LOGI(__func__, "Successfully read data (%d bytes) from file %s.", read_result, namefile);
-    ESP_LOGI(__func__, "Reading data from file %s...", namefile);
+    // ESP_LOGI(__func__, "Successfully read data (%d bytes) from file %s.", read_result, namefile);
+    // ESP_LOGI(__func__, "Reading data from file %s...", namefile);
     ESP_LOGI(__func__, "%s;\n", *data_str);
 
     fclose(file);  // close file
@@ -103,21 +103,21 @@ esp_err_t deleteSDcardData(const char *filename)
     // Check if file exists
     if (access(filename, F_OK) == -1)
     {
-        printf("File does not exist\n");
+        // ESP_LOGE(__func__, "File does not exist\n");
         return ESP_FAIL;
     }
     // Delete file
     if (unlink(filename) == -1)
     {
-        printf("Error deleting file\n");
+        // ESP_LOGE(__func__, "Error deleting file\n");
         return ESP_FAIL;
     }
-    ESP_LOGI(__func__, "Data has been deleted.");
+    // ESP_LOGI(__func__, "Data has been deleted.");
     // Create new file with appropriate permissions
     FILE *file = fopen(filename, "w+");
     if (file == NULL)
     {
-        printf("Error creating file\n");
+        // ESP_LOGE(__func__, "Error creating file\n");
         return ESP_FAIL;
     }
     fprintf(file, "Timestamp, Temperature, Humidity, PM2.5, PM1, PM10 \n");

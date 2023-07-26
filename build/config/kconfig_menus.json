@@ -2148,6 +2148,16 @@
             {
                 "children": [],
                 "depends_on": null,
+                "help": "I2C address of DS3231 is 0x68.",
+                "id": "DS3231_I2C_ADDR",
+                "name": "DS3231_I2C_ADDR",
+                "range": null,
+                "title": "I2C address of DS3231",
+                "type": "hex"
+            },
+            {
+                "children": [],
+                "depends_on": null,
                 "help": "I2C port for DS3231 RTC.",
                 "id": "DS3231_I2C_PORT",
                 "name": "DS3231_I2C_PORT",
@@ -2215,8 +2225,8 @@
             }
         ],
         "depends_on": null,
-        "id": "button-gpio",
-        "title": "BUTTON GPIO",
+        "id": "button-configuration",
+        "title": "BUTTON configuration",
         "type": "menu"
     },
     {
@@ -19758,32 +19768,6 @@
                             10000
                         ],
                         "title": "Timeout of long press, ms",
-                        "type": "int"
-                    },
-                    {
-                        "children": [],
-                        "depends_on": null,
-                        "help": null,
-                        "id": "BUTTON_AUTOREPEAT_TIMEOUT",
-                        "name": "BUTTON_AUTOREPEAT_TIMEOUT",
-                        "range": [
-                            100,
-                            10000
-                        ],
-                        "title": "Timeout before autorepeat, ms",
-                        "type": "int"
-                    },
-                    {
-                        "children": [],
-                        "depends_on": null,
-                        "help": null,
-                        "id": "BUTTON_AUTOREPEAT_INTERVAL",
-                        "name": "BUTTON_AUTOREPEAT_INTERVAL",
-                        "range": [
-                            100,
-                            10000
-                        ],
-                        "title": "Autorepeat interval, ms",
                         "type": "int"
                     }
                 ],

@@ -59,6 +59,11 @@ menu "SHT31 configuration"
 endmenu
 
 menu "DS3231 configuration"
+    config DS3231_I2C_ADDR
+        hex "I2C address of DS3231"
+        default 0x68
+        help
+            I2C address of DS3231 is 0x68.
     config DS3231_I2C_PORT
         int "I2C Port"
         default 0
@@ -82,7 +87,7 @@ menu "DS3231 configuration"
             GPIO number for I2C Master data line.
 endmenu
 
-menu "BUTTON GPIO"
+menu "BUTTON configuration"
 
     config EXAMPLE_BUTTON1_GPIO
         int "Button 1 GPIO number"

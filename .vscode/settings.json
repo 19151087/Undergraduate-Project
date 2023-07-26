@@ -65,7 +65,8 @@
         "xstddef": "cpp",
         "xtr1common": "cpp",
         "xtree": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "ds3231.h": "c"
     },
     "idf.adapterTargetName": "esp32"
 }
